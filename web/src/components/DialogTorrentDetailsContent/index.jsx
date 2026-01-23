@@ -43,6 +43,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
   const [isDetailedCacheView, setIsDetailedCacheView] = useState(false)
   const [viewedFileList, setViewedFileList] = useState()
   const [playableFileList, setPlayableFileList] = useState()
+  const [allFileList, setAllFileList] = useState()
   const [seasonAmount, setSeasonAmount] = useState(null)
   const [selectedSeason, setSelectedSeason] = useState()
   const [isSnakeDebugMode] = useState(JSON.parse(localStorage.getItem('isSnakeDebugMode')) || false)
@@ -66,9 +67,9 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
   const { Capacity, PiecesCount, PiecesLength, Filled } = cache
 
   useEffect(() => {
-    if (playableFileList && seasonAmount === null) {
+    if (allFileList && seasonAmount === null) {
       const seasons = []
-      playableFileList.forEach(({ path }) => {
+      allFileList.forEach(({ path }) => {
         const currentSeason = ptt.parse(path).season
         if (currentSeason) {
           !seasons.includes(currentSeason) && seasons.push(currentSeason)
@@ -77,9 +78,10 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
       seasons.length && setSelectedSeason(seasons[0])
       setSeasonAmount(seasons.sort((a, b) => a - b))
     }
-  }, [playableFileList, seasonAmount])
+  }, [allFileList, seasonAmount])
 
   useEffect(() => {
+    setAllFileList(torrentFileList)
     setPlayableFileList(torrentFileList?.filter(({ path }) => isFilePlayable(path)))
   }, [torrentFileList])
 
@@ -252,6 +254,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
               <Table
                 hash={hash}
                 playableFileList={playableFileList}
+                allFileList={allFileList}
                 viewedFileList={viewedFileList}
                 selectedSeason={selectedSeason}
                 seasonAmount={seasonAmount}

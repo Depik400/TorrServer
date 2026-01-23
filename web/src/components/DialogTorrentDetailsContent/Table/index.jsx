@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 
 import VideoPlayer from '../../VideoPlayer'
 import { TableStyle, ShortTableWrapper, ShortTable } from './style'
+import { isFilePlayable } from '../helpers'
 
 const { memo, useState } = require('react')
 
@@ -17,18 +18,37 @@ ptt.addHandler('season', /sezon[- |. ](\d{1,3})|(\d{1,3})[- |. ]sezon/i, { type:
 ptt.addHandler('season', /сезон[- |. ](\d{1,3})|(\d{1,3})[- |. ]сезон/i, { type: 'integer' })
 
 const Table = memo(
-  ({ playableFileList, viewedFileList, selectedSeason, seasonAmount, hash }) => {
+  ({ playableFileList, allFileList, viewedFileList, selectedSeason, seasonAmount, hash }) => {
     const { t } = useTranslation()
     const [isSupported, setIsSupported] = useState(true)
     const preloadBuffer = fileId => fetch(`${streamHost()}?link=${hash}&index=${fileId}&preload`)
     const getFileLink = (path, id) =>
       `${streamHost()}/${encodeURIComponent(path.split('\\').pop().split('/').pop())}?link=${hash}&index=${id}&play`
-    const fileHasEpisodeText = !!playableFileList?.find(({ path }) => ptt.parse(path).episode)
-    const fileHasSeasonText = !!playableFileList?.find(({ path }) => ptt.parse(path).season)
-    const fileHasResolutionText = !!playableFileList?.find(({ path }) => ptt.parse(path).resolution)
+    
+    // Use allFileList if available, otherwise fallback to playableFileList
+    const fileListToDisplay = allFileList || playableFileList
+    
+    const fileHasEpisodeText = !!fileListToDisplay?.find(({ path }) => ptt.parse(path).episode)
+    const fileHasSeasonText = !!fileListToDisplay?.find(({ path }) => ptt.parse(path).season)
+    const fileHasResolutionText = !!fileListToDisplay?.find(({ path }) => ptt.parse(path).resolution)
 
     // if files in list is more then 1 and no season text detected by ptt.parse, show full name
-    const shouldDisplayFullFileName = playableFileList?.length > 1 && !fileHasEpisodeText
+    const shouldDisplayFullFileName = fileListToDisplay?.length > 1 && !fileHasEpisodeText
+
+    // Function to trigger download for non-playable files
+    const triggerDownload = (path, id) => {
+      const link = getFileLink(path, id)
+      const fileName = path.split('\\').pop().split('/').pop()
+      
+      // Create a temporary anchor element and trigger download
+      const downloadLink = document.createElement('a')
+      downloadLink.href = link
+      downloadLink.download = fileName
+      downloadLink.style.display = 'none'
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+    }
 
     const isVlcUsed = JSON.parse(localStorage.getItem('isVlcUsed')) ?? false
     const isInfuseUsed = JSON.parse(localStorage.getItem('isInfuseUsed')) ?? false
@@ -38,8 +58,8 @@ const Table = memo(
     const isApple = isAppleDevice()
     const shouldShowOpenLink = !isStandalone || (!(isApple && isInfuseUsed) && !isVlcUsed && !(isMac && isIinaUsed))
 
-    return !playableFileList?.length ? (
-      'No playable files in this torrent'
+    return !fileListToDisplay?.length ? (
+      'No files in this torrent'
     ) : (
       <>
         <TableStyle>
@@ -56,19 +76,20 @@ const Table = memo(
           </thead>
 
           <tbody>
-            {playableFileList.map(({ id, path, length }) => {
+            {fileListToDisplay.map(({ id, path, length }) => {
               const { title, resolution, episode, season } = ptt.parse(path)
               const isViewed = viewedFileList?.includes(id)
               const link = getFileLink(path, id)
               const fullLink = new URL(link, window.location.href)
               const infuseLink = `infuse://x-callback-url/play?url=${encodeURIComponent(fullLink)}`
               const iinaLink = `iina://weblink?url=${encodeURIComponent(fullLink)}`
+              const isPlayable = isFilePlayable(path)
 
               return (
                 (season === selectedSeason || !seasonAmount?.length) && (
                   <tr key={id} className={isViewed ? 'viewed-file-row' : null}>
                     <td data-label='viewed' aria-label='viewed' className={isViewed ? 'viewed-file-indicator' : null} />
-                    <td data-label='name'>{shouldDisplayFullFileName ? path : title}</td>
+                    <td data-label='name'>{shouldDisplayFullFileName ? path : title || path}</td>
                     {fileHasSeasonText && seasonAmount?.length === 1 && <td data-label='season'>{season}</td>}
                     {fileHasEpisodeText && <td data-label='episode'>{episode}</td>}
                     {fileHasResolutionText && <td data-label='resolution'>{resolution}</td>}
@@ -78,50 +99,64 @@ const Table = memo(
                         <Button onClick={() => preloadBuffer(id)} variant='outlined' color='primary' size='small'>
                           {t('Preload')}
                         </Button>
-                        {isApple && isInfuseUsed && (
-                          <a style={{ textDecoration: 'none' }} href={infuseLink}>
-                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                              {t('Infuse')}
-                            </Button>
-                          </a>
-                        )}
-                        {isVlcUsed && (
-                          <a style={{ textDecoration: 'none' }} href={`vlc://${fullLink}`}>
-                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                              VLC
-                            </Button>
-                          </a>
-                        )}
-                        {isMac && isIinaUsed && (
-                          <a style={{ textDecoration: 'none' }} href={iinaLink}>
-                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                              IINA
-                            </Button>
-                          </a>
-                        )}
-                        {isSupported ? (
-                          <VideoPlayer title={title} videoSrc={link} onNotSupported={() => setIsSupported(false)} />
+                        {isPlayable ? (
+                          <>
+                            {isApple && isInfuseUsed && (
+                              <a style={{ textDecoration: 'none' }} href={infuseLink}>
+                                <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                                  {t('Infuse')}
+                                </Button>
+                              </a>
+                            )}
+                            {isVlcUsed && (
+                              <a style={{ textDecoration: 'none' }} href={`vlc://${fullLink}`}>
+                                <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                                  VLC
+                                </Button>
+                              </a>
+                            )}
+                            {isMac && isIinaUsed && (
+                              <a style={{ textDecoration: 'none' }} href={iinaLink}>
+                                <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                                  IINA
+                                </Button>
+                              </a>
+                            )}
+                            {isSupported ? (
+                              <VideoPlayer title={title} videoSrc={link} onNotSupported={() => setIsSupported(false)} />
+                            ) : (
+                              shouldShowOpenLink && (
+                                <a style={{ textDecoration: 'none' }} href={link} target='_blank' rel='noreferrer'>
+                                  <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                                    {t('OpenLink')}
+                                  </Button>
+                                </a>
+                              )
+                            )}
+                            {isSupported && shouldShowOpenLink && (
+                              <a style={{ textDecoration: 'none' }} href={link} target='_blank' rel='noreferrer'>
+                                <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                                  {t('OpenLink')}
+                                </Button>
+                              </a>
+                            )}
+                          </>
                         ) : (
-                          shouldShowOpenLink && (
-                            <a style={{ textDecoration: 'none' }} href={link} target='_blank' rel='noreferrer'>
-                              <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                                {t('OpenLink')}
-                              </Button>
-                            </a>
-                          )
+                          <Button
+                            onClick={() => triggerDownload(path, id)}
+                            variant='contained'
+                            color='primary'
+                            size='small'
+                            style={{ width: '100%' }}
+                          >
+                            {t('Download')}
+                          </Button>
                         )}
                         <CopyToClipboard text={fullLink}>
                           <Button variant='outlined' color='primary' size='small'>
                             {t('CopyLink')}
                           </Button>
                         </CopyToClipboard>
-                        {isSupported && shouldShowOpenLink && (
-                          <a style={{ textDecoration: 'none' }} href={link} target='_blank' rel='noreferrer'>
-                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                              {t('OpenLink')}
-                            </Button>
-                          </a>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -132,18 +167,19 @@ const Table = memo(
         </TableStyle>
 
         <ShortTableWrapper>
-          {playableFileList.map(({ id, path, length }) => {
+          {fileListToDisplay.map(({ id, path, length }) => {
             const { title, resolution, episode, season } = ptt.parse(path)
             const isViewed = viewedFileList?.includes(id)
             const link = getFileLink(path, id)
             const fullLink = new URL(link, window.location.href)
             const infuseLink = `infuse://x-callback-url/play?url=${encodeURIComponent(fullLink)}`
             const iinaLink = `iina://weblink?url=${encodeURIComponent(fullLink)}`
+            const isPlayable = isFilePlayable(path)
 
             return (
               (season === selectedSeason || !seasonAmount?.length) && (
                 <ShortTable key={id} isViewed={isViewed}>
-                  <div className='short-table-name'>{shouldDisplayFullFileName ? path : title}</div>
+                  <div className='short-table-name'>{shouldDisplayFullFileName ? path : title || path}</div>
                   <div className='short-table-data'>
                     {isViewed && (
                       <div className='short-table-field'>
@@ -181,36 +217,50 @@ const Table = memo(
                       {t('Preload')}
                     </Button>
 
-                    {isApple && isInfuseUsed && (
-                      <a style={{ textDecoration: 'none' }} href={infuseLink}>
-                        <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                          {t('Infuse')}
-                        </Button>
-                      </a>
-                    )}
+                    {isPlayable ? (
+                      <>
+                        {isApple && isInfuseUsed && (
+                          <a style={{ textDecoration: 'none' }} href={infuseLink}>
+                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                              {t('Infuse')}
+                            </Button>
+                          </a>
+                        )}
 
-                    {isVlcUsed && (
-                      <a style={{ textDecoration: 'none' }} href={`vlc://${fullLink}`}>
-                        <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                          VLC
-                        </Button>
-                      </a>
-                    )}
+                        {isVlcUsed && (
+                          <a style={{ textDecoration: 'none' }} href={`vlc://${fullLink}`}>
+                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                              VLC
+                            </Button>
+                          </a>
+                        )}
 
-                    {isMac && isIinaUsed && (
-                      <a style={{ textDecoration: 'none' }} href={iinaLink}>
-                        <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                          IINA
-                        </Button>
-                      </a>
-                    )}
+                        {isMac && isIinaUsed && (
+                          <a style={{ textDecoration: 'none' }} href={iinaLink}>
+                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                              IINA
+                            </Button>
+                          </a>
+                        )}
 
-                    {shouldShowOpenLink && (
-                      <a style={{ textDecoration: 'none' }} href={link} target='_blank' rel='noreferrer'>
-                        <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
-                          {t('OpenLink')}
-                        </Button>
-                      </a>
+                        {shouldShowOpenLink && (
+                          <a style={{ textDecoration: 'none' }} href={link} target='_blank' rel='noreferrer'>
+                            <Button style={{ width: '100%' }} variant='outlined' color='primary' size='small'>
+                              {t('OpenLink')}
+                            </Button>
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => triggerDownload(path, id)}
+                        variant='contained'
+                        color='primary'
+                        size='small'
+                        style={{ width: '100%' }}
+                      >
+                        {t('Download')}
+                      </Button>
                     )}
 
                     <CopyToClipboard text={fullLink}>

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { memo } from 'react'
-import { playlistTorrHost, torrentsHost, viewedHost } from 'utils/Hosts'
+import { playlistTorrHost, torrentsHost, viewedHost, downloadZipHost } from 'utils/Hosts'
 import { CopyToClipboard } from 'react-copy-to-clipboard'
 import { Button } from '@material-ui/core'
 import ptt from 'parse-torrent-title'
@@ -22,6 +22,7 @@ const TorrentFunctions = memo(
     const fullPlaylistLink = `${playlistTorrHost()}/${encodeURIComponent(name || title || 'file')}.m3u?link=${hash}&m3u`
     const partialPlaylistLink = `${fullPlaylistLink}&fromlast`
     const magnet = `magnet:?xt=urn:btih:${hash}&dn=${encodeURIComponent(name || title)}`
+    const downloadZipLink = `${downloadZipHost()}?hash=${hash}`
 
     return (
       <>
@@ -74,6 +75,11 @@ const TorrentFunctions = memo(
               </Button>
             </a>
           )}
+          <a style={{ textDecoration: 'none' }} href={downloadZipLink}>
+            <Button variant='contained' color='primary' size='large'>
+              {t('DownloadAll')}
+            </Button>
+          </a>
           <CopyToClipboard text={magnet}>
             <Button variant='contained' color='primary' size='large'>
               {t('CopyHash')}

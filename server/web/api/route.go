@@ -44,6 +44,8 @@ func SetupRoute(route gin.IRouter) {
 
 	authorized.GET("/download/:size", download)
 
+	authorized.GET("/downloadzip", downloadZip)
+
 	if config.SearchWA {
 		route.GET("/search/*query", rutorSearch)
 	} else {
