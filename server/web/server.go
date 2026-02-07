@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"sort"
+	"time"
 
 	"server/torrfs/fuse"
 	"server/torrfs/webdav"
@@ -68,16 +69,29 @@ func Start() {
 	// corsCfg.AllowAllOrigins = true
 	// corsCfg.AllowHeaders = []string{"*"}
 	// corsCfg.AllowMethods = []string{"*"}
-	corsCfg := cors.DefaultConfig()
-	corsCfg.AllowAllOrigins = true
-	corsCfg.AllowPrivateNetwork = true
-	corsCfg.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "X-Requested-With", "Accept", "Authorization"}
-
+	corsCfg := cors.Config{
+		AllowOrigins: []string{"http://localhost:5173"}, // Точнее указать origin
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"X-CSRF-Token",
+			"Authorization",
+			"Accept",
+			"X-Requested-With",
+			"X-Api-Key",
+		},
+		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
+		AllowCredentials: true, // Если используете куки/авторизацию
+		MaxAge:           12 * time.Hour,
+	}
 	route := gin.New()
-	route.Use(log.WebLogger(), blocker.Blocker(), gin.Recovery(), cors.New(corsCfg), location.Default())
+	route.Use(log.WebLogger(), cors.New(corsCfg), blocker.Blocker(), gin.Recovery(), location.Default())
 	auth.SetupAuth(route)
 
-	route.GET("/echo", echo)
+	route.GET("/api/echo", echo)
 
 	api.SetupRoute(route)
 	msx.SetupRoute(route)
