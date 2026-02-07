@@ -10,7 +10,7 @@ import {
 } from '@material-ui/icons'
 import { getPeerString, humanizeSize, humanizeSpeed } from 'utils/Utils'
 import { useTranslation } from 'react-i18next'
-import { GETTING_INFO, IN_DB, CLOSED, PRELOAD, WORKING } from 'torrentStates'
+import { GETTING_INFO, IN_DB, CLOSED, PRELOAD, WORKING } from '@/torrentStates'
 import { TORRENT_CATEGORIES } from 'components/categories'
 
 import StatisticsField from '../StatisticsField'

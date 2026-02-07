@@ -1,6 +1,12 @@
 {
   "compilerOptions": {
-    "baseUrl": "src"
+    "baseUrl": "./src",
+    "allowJs": true,
+    "module": "es2022",
+"paths": {
+  "style": ["./src/style"],
+  "@": ["./src/"],
+}
   },
   "include": ["src"]
 }

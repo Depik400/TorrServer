@@ -55,7 +55,11 @@ export default function AddDialog({
 
   useEffect(() => {
     // getting hash from added torrent source
+    try {
     parseTorrent.remote(selectedFile || torrentSource, (_, { infoHash } = {}) => setCurrentSourceHash(infoHash))
+    } catch {
+      console.error('qwe');
+    }
   }, [selectedFile, torrentSource])
 
   useEffect(() => {

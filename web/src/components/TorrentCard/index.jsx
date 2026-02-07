@@ -18,11 +18,10 @@ import { useTranslation } from 'react-i18next'
 import AddDialog from 'components/Add/AddDialog'
 import { StyledDialog } from 'style/CustomMaterialUiStyles'
 import useOnStandaloneAppOutsideClick from 'utils/useOnStandaloneAppOutsideClick'
-import { GETTING_INFO, IN_DB, CLOSED, PRELOAD, WORKING } from 'torrentStates'
+import { GETTING_INFO, IN_DB, CLOSED, PRELOAD, WORKING } from '@/torrentStates'
 import { TORRENT_CATEGORIES } from 'components/categories'
 import VideoPlayer from 'components/VideoPlayer'
 import { isFilePlayable } from 'components/DialogTorrentDetailsContent/helpers'
-
 import {
   StatusIndicators,
   StyledButton,

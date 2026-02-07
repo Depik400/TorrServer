@@ -10,7 +10,7 @@ import VideoPlayer from '../../VideoPlayer'
 import { TableStyle, ShortTableWrapper, ShortTable } from './style'
 import { isFilePlayable } from '../helpers'
 
-const { memo, useState } = require('react')
+import { memo, useState } from 'react';
 
 // russian episode detection support
 ptt.addHandler('episode', /(\d{1,4})[- |. ]серия|серия[- |. ](\d{1,4})/i, { type: 'integer' })

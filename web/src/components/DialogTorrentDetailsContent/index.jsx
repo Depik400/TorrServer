@@ -5,7 +5,7 @@ import { Button, ButtonGroup } from '@material-ui/core'
 import ptt from 'parse-torrent-title'
 import axios from 'axios'
 import { viewedHost } from 'utils/Hosts'
-import { GETTING_INFO, IN_DB } from 'torrentStates'
+import { GETTING_INFO, IN_DB } from '@/torrentStates'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import { useTranslation } from 'react-i18next'
 

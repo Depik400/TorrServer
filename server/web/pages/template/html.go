@@ -82,9 +82,6 @@ var Applesplash7501334jpg []byte
 //go:embed pages/apple-splash-828-1792.jpg
 var Applesplash8281792jpg []byte
 
-//go:embed pages/asset-manifest.json
-var Assetmanifestjson []byte
-
 //go:embed pages/browserconfig.xml
 var Browserconfigxml []byte
 
@@ -118,23 +115,5 @@ var Mstile150x150png []byte
 //go:embed pages/site.webmanifest
 var Sitewebmanifest []byte
 
-//go:embed pages/static/js/2.a884a9d4.chunk.js
-var Staticjs2a884a9d4chunkjs []byte
-
-//go:embed pages/static/js/2.a884a9d4.chunk.js.LICENSE.txt
-var Staticjs2a884a9d4chunkjsLICENSEtxt []byte
-
-//go:embed pages/static/js/2.a884a9d4.chunk.js.map
-var Staticjs2a884a9d4chunkjsmap []byte
-
-//go:embed pages/static/js/main.c36067f1.chunk.js
-var Staticjsmainc36067f1chunkjs []byte
-
-//go:embed pages/static/js/main.c36067f1.chunk.js.map
-var Staticjsmainc36067f1chunkjsmap []byte
-
-//go:embed pages/static/js/runtime-main.5ed86a79.js
-var Staticjsruntimemain5ed86a79js []byte
-
-//go:embed pages/static/js/runtime-main.5ed86a79.js.map
-var Staticjsruntimemain5ed86a79jsmap []byte
+//go:embed pages/static/index-C9lE3-bk.js
+var StaticindexC9lE3bkjs []byte

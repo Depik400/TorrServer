@@ -9,7 +9,7 @@ export const getMoviePosters = (movieName, language = 'en') => {
   return axios
     .get(url, {
       params: {
-        api_key: process.env.REACT_APP_TMDB_API_KEY,
+        api_key: import.meta.env.REACT_APP_TMDB_API_KEY,
         language,
         include_image_language: `${language},null,en`,
         query: movieName,
