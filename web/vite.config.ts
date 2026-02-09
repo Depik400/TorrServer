@@ -1,13 +1,25 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
+import federation from '@originjs/vite-plugin-federation'
 
 import path from 'path'
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), nodePolyfills({ include: ['buffer', 'fs'] })],
+    plugins: [
+      react(),
+      nodePolyfills({ include: ['buffer', 'fs'] }),
+      federation({
+        name: 'torrent-server',
+        filename: 'torrent-server-entry.js',
+        exposes: {
+          './TorrServerEntry': './src/react-render.jsx',
+          './Hosts': './src/utils/Hosts.js',
+        },
+      }),
+    ],
     build: {
       outDir: 'build',
       assetsDir: 'static',

@@ -115,5 +115,14 @@ var Mstile150x150png []byte
 //go:embed pages/site.webmanifest
 var Sitewebmanifest []byte
 
-//go:embed pages/static/index-C9lE3-bk.js
-var StaticindexC9lE3bkjs []byte
+//go:embed pages/static/__federation_expose_Hosts-DyPCxrOI.js
+var StaticfederationexposeHostsDyPCxrOIjs []byte
+
+//go:embed pages/static/__federation_expose_TorrServerEntry-OGloVvoY.js
+var StaticfederationexposeTorrServerEntryOGloVvoYjs []byte
+
+//go:embed pages/static/index-D51NYAoL.js
+var StaticindexD51NYAoLjs []byte
+
+//go:embed pages/static/torrent-server-entry.js
+var Statictorrentserverentryjs []byte

@@ -41,10 +41,10 @@ func main() {
 
 	if _, err := os.Stat("web/build/static"); os.IsNotExist(err) {
 		os.Chdir("web")
-		if err = run("yarn"); err != nil {
+		if err = run("bun", "i"); err != nil {
 			log.Default().Fatalln(err.Error())
 		}
-		if err = run("yarn", "run", "build"); err != nil {
+		if err = run("npx", "vite", "build"); err != nil {
 			log.Default().Fatalln(err.Error())
 		}
 		os.Chdir(dir)
