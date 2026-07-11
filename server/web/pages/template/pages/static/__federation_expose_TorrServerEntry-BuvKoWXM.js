@@ -8790,6 +8790,129 @@ function formatMuiErrorMessage(code2) {
   }
   return "Minified Material-UI error #" + code2 + "; visit " + url2 + " for the full message.";
 }
+var reactIs$1 = { exports: {} };
+var reactIs_production_min$1 = {};
+var hasRequiredReactIs_production_min$1;
+function requireReactIs_production_min$1() {
+  if (hasRequiredReactIs_production_min$1) return reactIs_production_min$1;
+  hasRequiredReactIs_production_min$1 = 1;
+  var b2 = 60103, c = 60106, d = 60107, e = 60108, f = 60114, g2 = 60109, h = 60110, k2 = 60112, l = 60113, m2 = 60120, n = 60115, p = 60116, q2 = 60121, r2 = 60122, u = 60117, v2 = 60129, w2 = 60131;
+  if ("function" === typeof Symbol && Symbol.for) {
+    var x2 = Symbol.for;
+    b2 = x2("react.element");
+    c = x2("react.portal");
+    d = x2("react.fragment");
+    e = x2("react.strict_mode");
+    f = x2("react.profiler");
+    g2 = x2("react.provider");
+    h = x2("react.context");
+    k2 = x2("react.forward_ref");
+    l = x2("react.suspense");
+    m2 = x2("react.suspense_list");
+    n = x2("react.memo");
+    p = x2("react.lazy");
+    q2 = x2("react.block");
+    r2 = x2("react.server.block");
+    u = x2("react.fundamental");
+    v2 = x2("react.debug_trace_mode");
+    w2 = x2("react.legacy_hidden");
+  }
+  function y2(a) {
+    if ("object" === typeof a && null !== a) {
+      var t = a.$$typeof;
+      switch (t) {
+        case b2:
+          switch (a = a.type, a) {
+            case d:
+            case f:
+            case e:
+            case l:
+            case m2:
+              return a;
+            default:
+              switch (a = a && a.$$typeof, a) {
+                case h:
+                case k2:
+                case p:
+                case n:
+                case g2:
+                  return a;
+                default:
+                  return t;
+              }
+          }
+        case c:
+          return t;
+      }
+    }
+  }
+  var z2 = g2, A = b2, B2 = k2, C2 = d, D2 = p, E2 = n, F2 = c, G2 = f, H2 = e, I2 = l;
+  reactIs_production_min$1.ContextConsumer = h;
+  reactIs_production_min$1.ContextProvider = z2;
+  reactIs_production_min$1.Element = A;
+  reactIs_production_min$1.ForwardRef = B2;
+  reactIs_production_min$1.Fragment = C2;
+  reactIs_production_min$1.Lazy = D2;
+  reactIs_production_min$1.Memo = E2;
+  reactIs_production_min$1.Portal = F2;
+  reactIs_production_min$1.Profiler = G2;
+  reactIs_production_min$1.StrictMode = H2;
+  reactIs_production_min$1.Suspense = I2;
+  reactIs_production_min$1.isAsyncMode = function() {
+    return false;
+  };
+  reactIs_production_min$1.isConcurrentMode = function() {
+    return false;
+  };
+  reactIs_production_min$1.isContextConsumer = function(a) {
+    return y2(a) === h;
+  };
+  reactIs_production_min$1.isContextProvider = function(a) {
+    return y2(a) === g2;
+  };
+  reactIs_production_min$1.isElement = function(a) {
+    return "object" === typeof a && null !== a && a.$$typeof === b2;
+  };
+  reactIs_production_min$1.isForwardRef = function(a) {
+    return y2(a) === k2;
+  };
+  reactIs_production_min$1.isFragment = function(a) {
+    return y2(a) === d;
+  };
+  reactIs_production_min$1.isLazy = function(a) {
+    return y2(a) === p;
+  };
+  reactIs_production_min$1.isMemo = function(a) {
+    return y2(a) === n;
+  };
+  reactIs_production_min$1.isPortal = function(a) {
+    return y2(a) === c;
+  };
+  reactIs_production_min$1.isProfiler = function(a) {
+    return y2(a) === f;
+  };
+  reactIs_production_min$1.isStrictMode = function(a) {
+    return y2(a) === e;
+  };
+  reactIs_production_min$1.isSuspense = function(a) {
+    return y2(a) === l;
+  };
+  reactIs_production_min$1.isValidElementType = function(a) {
+    return "string" === typeof a || "function" === typeof a || a === d || a === f || a === v2 || a === e || a === l || a === m2 || a === w2 || "object" === typeof a && null !== a && (a.$$typeof === p || a.$$typeof === n || a.$$typeof === g2 || a.$$typeof === h || a.$$typeof === k2 || a.$$typeof === u || a.$$typeof === q2 || a[0] === r2) ? true : false;
+  };
+  reactIs_production_min$1.typeOf = y2;
+  return reactIs_production_min$1;
+}
+var hasRequiredReactIs$1;
+function requireReactIs$1() {
+  if (hasRequiredReactIs$1) return reactIs$1.exports;
+  hasRequiredReactIs$1 = 1;
+  {
+    reactIs$1.exports = requireReactIs_production_min$1();
+  }
+  return reactIs$1.exports;
+}
+var reactIsExports = requireReactIs$1();
 var hasSymbol = typeof Symbol === "function" && Symbol.for;
 const nested = hasSymbol ? /* @__PURE__ */ Symbol.for("mui.nested") : "__THEME_NESTED__";
 var pseudoClasses = ["checked", "disabled", "error", "focused", "focusVisible", "required", "expanded", "selected"];
@@ -11401,12 +11524,12 @@ function clsx() {
   for (var e, t, f = 0, n = ""; f < arguments.length; ) (e = arguments[f++]) && (t = r(e)) && (n && (n += " "), n += t);
   return n;
 }
-var reactIs$2 = { exports: {} };
-var reactIs_production_min$2 = {};
-var hasRequiredReactIs_production_min$2;
-function requireReactIs_production_min$2() {
-  if (hasRequiredReactIs_production_min$2) return reactIs_production_min$2;
-  hasRequiredReactIs_production_min$2 = 1;
+var reactIs = { exports: {} };
+var reactIs_production_min = {};
+var hasRequiredReactIs_production_min;
+function requireReactIs_production_min() {
+  if (hasRequiredReactIs_production_min) return reactIs_production_min;
+  hasRequiredReactIs_production_min = 1;
   var b2 = "function" === typeof Symbol && Symbol.for, c = b2 ? /* @__PURE__ */ Symbol.for("react.element") : 60103, d = b2 ? /* @__PURE__ */ Symbol.for("react.portal") : 60106, e = b2 ? /* @__PURE__ */ Symbol.for("react.fragment") : 60107, f = b2 ? /* @__PURE__ */ Symbol.for("react.strict_mode") : 60108, g2 = b2 ? /* @__PURE__ */ Symbol.for("react.profiler") : 60114, h = b2 ? /* @__PURE__ */ Symbol.for("react.provider") : 60109, k2 = b2 ? /* @__PURE__ */ Symbol.for("react.context") : 60110, l = b2 ? /* @__PURE__ */ Symbol.for("react.async_mode") : 60111, m2 = b2 ? /* @__PURE__ */ Symbol.for("react.concurrent_mode") : 60111, n = b2 ? /* @__PURE__ */ Symbol.for("react.forward_ref") : 60112, p = b2 ? /* @__PURE__ */ Symbol.for("react.suspense") : 60113, q2 = b2 ? /* @__PURE__ */ Symbol.for("react.suspense_list") : 60120, r2 = b2 ? /* @__PURE__ */ Symbol.for("react.memo") : 60115, t = b2 ? /* @__PURE__ */ Symbol.for("react.lazy") : 60116, v2 = b2 ? /* @__PURE__ */ Symbol.for("react.block") : 60121, w2 = b2 ? /* @__PURE__ */ Symbol.for("react.fundamental") : 60117, x2 = b2 ? /* @__PURE__ */ Symbol.for("react.responder") : 60118, y2 = b2 ? /* @__PURE__ */ Symbol.for("react.scope") : 60119;
   function z2(a) {
     if ("object" === typeof a && null !== a) {
@@ -11441,77 +11564,77 @@ function requireReactIs_production_min$2() {
   function A(a) {
     return z2(a) === m2;
   }
-  reactIs_production_min$2.AsyncMode = l;
-  reactIs_production_min$2.ConcurrentMode = m2;
-  reactIs_production_min$2.ContextConsumer = k2;
-  reactIs_production_min$2.ContextProvider = h;
-  reactIs_production_min$2.Element = c;
-  reactIs_production_min$2.ForwardRef = n;
-  reactIs_production_min$2.Fragment = e;
-  reactIs_production_min$2.Lazy = t;
-  reactIs_production_min$2.Memo = r2;
-  reactIs_production_min$2.Portal = d;
-  reactIs_production_min$2.Profiler = g2;
-  reactIs_production_min$2.StrictMode = f;
-  reactIs_production_min$2.Suspense = p;
-  reactIs_production_min$2.isAsyncMode = function(a) {
+  reactIs_production_min.AsyncMode = l;
+  reactIs_production_min.ConcurrentMode = m2;
+  reactIs_production_min.ContextConsumer = k2;
+  reactIs_production_min.ContextProvider = h;
+  reactIs_production_min.Element = c;
+  reactIs_production_min.ForwardRef = n;
+  reactIs_production_min.Fragment = e;
+  reactIs_production_min.Lazy = t;
+  reactIs_production_min.Memo = r2;
+  reactIs_production_min.Portal = d;
+  reactIs_production_min.Profiler = g2;
+  reactIs_production_min.StrictMode = f;
+  reactIs_production_min.Suspense = p;
+  reactIs_production_min.isAsyncMode = function(a) {
     return A(a) || z2(a) === l;
   };
-  reactIs_production_min$2.isConcurrentMode = A;
-  reactIs_production_min$2.isContextConsumer = function(a) {
+  reactIs_production_min.isConcurrentMode = A;
+  reactIs_production_min.isContextConsumer = function(a) {
     return z2(a) === k2;
   };
-  reactIs_production_min$2.isContextProvider = function(a) {
+  reactIs_production_min.isContextProvider = function(a) {
     return z2(a) === h;
   };
-  reactIs_production_min$2.isElement = function(a) {
+  reactIs_production_min.isElement = function(a) {
     return "object" === typeof a && null !== a && a.$$typeof === c;
   };
-  reactIs_production_min$2.isForwardRef = function(a) {
+  reactIs_production_min.isForwardRef = function(a) {
     return z2(a) === n;
   };
-  reactIs_production_min$2.isFragment = function(a) {
+  reactIs_production_min.isFragment = function(a) {
     return z2(a) === e;
   };
-  reactIs_production_min$2.isLazy = function(a) {
+  reactIs_production_min.isLazy = function(a) {
     return z2(a) === t;
   };
-  reactIs_production_min$2.isMemo = function(a) {
+  reactIs_production_min.isMemo = function(a) {
     return z2(a) === r2;
   };
-  reactIs_production_min$2.isPortal = function(a) {
+  reactIs_production_min.isPortal = function(a) {
     return z2(a) === d;
   };
-  reactIs_production_min$2.isProfiler = function(a) {
+  reactIs_production_min.isProfiler = function(a) {
     return z2(a) === g2;
   };
-  reactIs_production_min$2.isStrictMode = function(a) {
+  reactIs_production_min.isStrictMode = function(a) {
     return z2(a) === f;
   };
-  reactIs_production_min$2.isSuspense = function(a) {
+  reactIs_production_min.isSuspense = function(a) {
     return z2(a) === p;
   };
-  reactIs_production_min$2.isValidElementType = function(a) {
+  reactIs_production_min.isValidElementType = function(a) {
     return "string" === typeof a || "function" === typeof a || a === e || a === m2 || a === g2 || a === f || a === p || a === q2 || "object" === typeof a && null !== a && (a.$$typeof === t || a.$$typeof === r2 || a.$$typeof === h || a.$$typeof === k2 || a.$$typeof === n || a.$$typeof === w2 || a.$$typeof === x2 || a.$$typeof === y2 || a.$$typeof === v2);
   };
-  reactIs_production_min$2.typeOf = z2;
-  return reactIs_production_min$2;
+  reactIs_production_min.typeOf = z2;
+  return reactIs_production_min;
 }
-var hasRequiredReactIs$2;
-function requireReactIs$2() {
-  if (hasRequiredReactIs$2) return reactIs$2.exports;
-  hasRequiredReactIs$2 = 1;
+var hasRequiredReactIs;
+function requireReactIs() {
+  if (hasRequiredReactIs) return reactIs.exports;
+  hasRequiredReactIs = 1;
   {
-    reactIs$2.exports = requireReactIs_production_min$2();
+    reactIs.exports = requireReactIs_production_min();
   }
-  return reactIs$2.exports;
+  return reactIs.exports;
 }
 var hoistNonReactStatics_cjs;
 var hasRequiredHoistNonReactStatics_cjs;
 function requireHoistNonReactStatics_cjs() {
   if (hasRequiredHoistNonReactStatics_cjs) return hoistNonReactStatics_cjs;
   hasRequiredHoistNonReactStatics_cjs = 1;
-  var reactIs2 = requireReactIs$2();
+  var reactIs2 = requireReactIs();
   var REACT_STATICS = {
     childContextTypes: true,
     contextType: true,
@@ -22308,129 +22431,6 @@ function useTheme() {
   var theme = useTheme$1() || defaultTheme;
   return theme;
 }
-var reactIs$1 = { exports: {} };
-var reactIs_production_min$1 = {};
-var hasRequiredReactIs_production_min$1;
-function requireReactIs_production_min$1() {
-  if (hasRequiredReactIs_production_min$1) return reactIs_production_min$1;
-  hasRequiredReactIs_production_min$1 = 1;
-  var b2 = 60103, c = 60106, d = 60107, e = 60108, f = 60114, g2 = 60109, h = 60110, k2 = 60112, l = 60113, m2 = 60120, n = 60115, p = 60116, q2 = 60121, r2 = 60122, u = 60117, v2 = 60129, w2 = 60131;
-  if ("function" === typeof Symbol && Symbol.for) {
-    var x2 = Symbol.for;
-    b2 = x2("react.element");
-    c = x2("react.portal");
-    d = x2("react.fragment");
-    e = x2("react.strict_mode");
-    f = x2("react.profiler");
-    g2 = x2("react.provider");
-    h = x2("react.context");
-    k2 = x2("react.forward_ref");
-    l = x2("react.suspense");
-    m2 = x2("react.suspense_list");
-    n = x2("react.memo");
-    p = x2("react.lazy");
-    q2 = x2("react.block");
-    r2 = x2("react.server.block");
-    u = x2("react.fundamental");
-    v2 = x2("react.debug_trace_mode");
-    w2 = x2("react.legacy_hidden");
-  }
-  function y2(a) {
-    if ("object" === typeof a && null !== a) {
-      var t = a.$$typeof;
-      switch (t) {
-        case b2:
-          switch (a = a.type, a) {
-            case d:
-            case f:
-            case e:
-            case l:
-            case m2:
-              return a;
-            default:
-              switch (a = a && a.$$typeof, a) {
-                case h:
-                case k2:
-                case p:
-                case n:
-                case g2:
-                  return a;
-                default:
-                  return t;
-              }
-          }
-        case c:
-          return t;
-      }
-    }
-  }
-  var z2 = g2, A = b2, B2 = k2, C2 = d, D2 = p, E2 = n, F2 = c, G2 = f, H2 = e, I2 = l;
-  reactIs_production_min$1.ContextConsumer = h;
-  reactIs_production_min$1.ContextProvider = z2;
-  reactIs_production_min$1.Element = A;
-  reactIs_production_min$1.ForwardRef = B2;
-  reactIs_production_min$1.Fragment = C2;
-  reactIs_production_min$1.Lazy = D2;
-  reactIs_production_min$1.Memo = E2;
-  reactIs_production_min$1.Portal = F2;
-  reactIs_production_min$1.Profiler = G2;
-  reactIs_production_min$1.StrictMode = H2;
-  reactIs_production_min$1.Suspense = I2;
-  reactIs_production_min$1.isAsyncMode = function() {
-    return false;
-  };
-  reactIs_production_min$1.isConcurrentMode = function() {
-    return false;
-  };
-  reactIs_production_min$1.isContextConsumer = function(a) {
-    return y2(a) === h;
-  };
-  reactIs_production_min$1.isContextProvider = function(a) {
-    return y2(a) === g2;
-  };
-  reactIs_production_min$1.isElement = function(a) {
-    return "object" === typeof a && null !== a && a.$$typeof === b2;
-  };
-  reactIs_production_min$1.isForwardRef = function(a) {
-    return y2(a) === k2;
-  };
-  reactIs_production_min$1.isFragment = function(a) {
-    return y2(a) === d;
-  };
-  reactIs_production_min$1.isLazy = function(a) {
-    return y2(a) === p;
-  };
-  reactIs_production_min$1.isMemo = function(a) {
-    return y2(a) === n;
-  };
-  reactIs_production_min$1.isPortal = function(a) {
-    return y2(a) === c;
-  };
-  reactIs_production_min$1.isProfiler = function(a) {
-    return y2(a) === f;
-  };
-  reactIs_production_min$1.isStrictMode = function(a) {
-    return y2(a) === e;
-  };
-  reactIs_production_min$1.isSuspense = function(a) {
-    return y2(a) === l;
-  };
-  reactIs_production_min$1.isValidElementType = function(a) {
-    return "string" === typeof a || "function" === typeof a || a === d || a === f || a === v2 || a === e || a === l || a === m2 || a === w2 || "object" === typeof a && null !== a && (a.$$typeof === p || a.$$typeof === n || a.$$typeof === g2 || a.$$typeof === h || a.$$typeof === k2 || a.$$typeof === u || a.$$typeof === q2 || a[0] === r2) ? true : false;
-  };
-  reactIs_production_min$1.typeOf = y2;
-  return reactIs_production_min$1;
-}
-var hasRequiredReactIs$1;
-function requireReactIs$1() {
-  if (hasRequiredReactIs$1) return reactIs$1.exports;
-  hasRequiredReactIs$1 = 1;
-  {
-    reactIs$1.exports = requireReactIs_production_min$1();
-  }
-  return reactIs$1.exports;
-}
-requireReactIs$1();
 const config = {
   disabled: false
 };
@@ -36176,129 +36176,6 @@ const getShortCacheMap = ({ cacheMap, preloadPiecesAmount, piecesInOneRow }) => 
   const extraEmptyBlocksForFillingLine = extraBlocksAmount ? new Array(extraBlocksAmount).fill({}) : [];
   return [...cacheMapWithoutEmptyBlocks, ...extraEmptyBlocksForFillingLine];
 };
-var reactIs = { exports: {} };
-var reactIs_production_min = {};
-var hasRequiredReactIs_production_min;
-function requireReactIs_production_min() {
-  if (hasRequiredReactIs_production_min) return reactIs_production_min;
-  hasRequiredReactIs_production_min = 1;
-  var b2 = 60103, c = 60106, d = 60107, e = 60108, f = 60114, g2 = 60109, h = 60110, k2 = 60112, l = 60113, m2 = 60120, n = 60115, p = 60116, q2 = 60121, r2 = 60122, u = 60117, v2 = 60129, w2 = 60131;
-  if ("function" === typeof Symbol && Symbol.for) {
-    var x2 = Symbol.for;
-    b2 = x2("react.element");
-    c = x2("react.portal");
-    d = x2("react.fragment");
-    e = x2("react.strict_mode");
-    f = x2("react.profiler");
-    g2 = x2("react.provider");
-    h = x2("react.context");
-    k2 = x2("react.forward_ref");
-    l = x2("react.suspense");
-    m2 = x2("react.suspense_list");
-    n = x2("react.memo");
-    p = x2("react.lazy");
-    q2 = x2("react.block");
-    r2 = x2("react.server.block");
-    u = x2("react.fundamental");
-    v2 = x2("react.debug_trace_mode");
-    w2 = x2("react.legacy_hidden");
-  }
-  function y2(a) {
-    if ("object" === typeof a && null !== a) {
-      var t = a.$$typeof;
-      switch (t) {
-        case b2:
-          switch (a = a.type, a) {
-            case d:
-            case f:
-            case e:
-            case l:
-            case m2:
-              return a;
-            default:
-              switch (a = a && a.$$typeof, a) {
-                case h:
-                case k2:
-                case p:
-                case n:
-                case g2:
-                  return a;
-                default:
-                  return t;
-              }
-          }
-        case c:
-          return t;
-      }
-    }
-  }
-  var z2 = g2, A = b2, B2 = k2, C2 = d, D2 = p, E2 = n, F2 = c, G2 = f, H2 = e, I2 = l;
-  reactIs_production_min.ContextConsumer = h;
-  reactIs_production_min.ContextProvider = z2;
-  reactIs_production_min.Element = A;
-  reactIs_production_min.ForwardRef = B2;
-  reactIs_production_min.Fragment = C2;
-  reactIs_production_min.Lazy = D2;
-  reactIs_production_min.Memo = E2;
-  reactIs_production_min.Portal = F2;
-  reactIs_production_min.Profiler = G2;
-  reactIs_production_min.StrictMode = H2;
-  reactIs_production_min.Suspense = I2;
-  reactIs_production_min.isAsyncMode = function() {
-    return false;
-  };
-  reactIs_production_min.isConcurrentMode = function() {
-    return false;
-  };
-  reactIs_production_min.isContextConsumer = function(a) {
-    return y2(a) === h;
-  };
-  reactIs_production_min.isContextProvider = function(a) {
-    return y2(a) === g2;
-  };
-  reactIs_production_min.isElement = function(a) {
-    return "object" === typeof a && null !== a && a.$$typeof === b2;
-  };
-  reactIs_production_min.isForwardRef = function(a) {
-    return y2(a) === k2;
-  };
-  reactIs_production_min.isFragment = function(a) {
-    return y2(a) === d;
-  };
-  reactIs_production_min.isLazy = function(a) {
-    return y2(a) === p;
-  };
-  reactIs_production_min.isMemo = function(a) {
-    return y2(a) === n;
-  };
-  reactIs_production_min.isPortal = function(a) {
-    return y2(a) === c;
-  };
-  reactIs_production_min.isProfiler = function(a) {
-    return y2(a) === f;
-  };
-  reactIs_production_min.isStrictMode = function(a) {
-    return y2(a) === e;
-  };
-  reactIs_production_min.isSuspense = function(a) {
-    return y2(a) === l;
-  };
-  reactIs_production_min.isValidElementType = function(a) {
-    return "string" === typeof a || "function" === typeof a || a === d || a === f || a === v2 || a === e || a === l || a === m2 || a === w2 || "object" === typeof a && null !== a && (a.$$typeof === p || a.$$typeof === n || a.$$typeof === g2 || a.$$typeof === h || a.$$typeof === k2 || a.$$typeof === u || a.$$typeof === q2 || a[0] === r2) ? true : false;
-  };
-  reactIs_production_min.typeOf = y2;
-  return reactIs_production_min;
-}
-var hasRequiredReactIs;
-function requireReactIs() {
-  if (hasRequiredReactIs) return reactIs.exports;
-  hasRequiredReactIs = 1;
-  {
-    reactIs.exports = requireReactIs_production_min();
-  }
-  return reactIs.exports;
-}
-var reactIsExports = requireReactIs();
 function stylis_min(W2) {
   function M2(d, c, e, h, a) {
     for (var m2 = 0, b2 = 0, v2 = 0, n = 0, q2, g2, x2 = 0, K2 = 0, k2, u = k2 = q2 = 0, l = 0, r2 = 0, I2 = 0, t = 0, B3 = e.length, J2 = B3 - 1, y2, f = "", p = "", F3 = "", G3 = "", C2; l < B3; ) {
@@ -40234,7 +40111,7 @@ const playableExtList = [
   "xm"
 ];
 const isFilePlayable = (fileName) => playableExtList.includes(getExt(fileName));
-const VlcLogoSvg = "/static/VLC_logo-Drd2yZSZ.svg";
+const VlcLogoSvg = "/static/VLC_logo-DDPxndHg.svg";
 const Content$2 = qe.div`
   ${({
   isLoading,
