@@ -75,7 +75,11 @@ func main() {
 
 func configureRuntime() {
 	if params.Path == "" {
-		params.Path, _ = os.Getwd()
+		params.Path = defaultDataPath()
+	}
+	if err := os.MkdirAll(params.Path, 0o755); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	settings.Path = params.Path

@@ -1,5 +1,5 @@
-//go:build !windows && !android
-// +build !windows,!android
+//go:build !windows && !android && !ios
+// +build !windows,!android,!ios
 
 package main
 
