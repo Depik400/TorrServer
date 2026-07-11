@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 	"server/web"
 )
 
-func Start() {
+func Start(httpListener net.Listener) error {
 	settings.InitSets(settings.Args.RDB, settings.Args.SearchWA)
 	// https checks
 	if settings.Args.Ssl {
@@ -32,39 +33,40 @@ func Start() {
 				settings.BTsets.SslPort = dbSSlPort
 			}
 		}
-		// check if ssl cert and key files exist
 		if settings.Args.SslCert != "" && settings.Args.SslKey != "" {
-			// set settings ssl cert and key files
 			settings.BTsets.SslCert = settings.Args.SslCert
 			settings.BTsets.SslKey = settings.Args.SslKey
 		}
-		log.TLogln("Check web ssl port", settings.Args.SslPort)
-		l, err := net.Listen("tcp", settings.Args.IP+":"+settings.Args.SslPort)
-		if l != nil {
-			l.Close()
+		if settings.Args.SslPort != "" {
+			log.TLogln("Check web ssl port", settings.Args.SslPort)
+			l, err := net.Listen("tcp", net.JoinHostPort(settings.Args.IP, settings.Args.SslPort))
+			if l != nil {
+				l.Close()
+			}
+			if err != nil {
+				return fmt.Errorf("port %s already in use for HTTPS: %w", settings.Args.SslPort, err)
+			}
 		}
-		if err != nil {
-			log.TLogln("Port", settings.Args.SslPort, "already in use! Please set different ssl port for HTTPS. Abort")
-			os.Exit(1)
-		}
-	}
-	// http checks
-	if settings.Args.Port == "" {
-		settings.Args.Port = "8090"
 	}
 
-	log.TLogln("Check web port", settings.Args.Port)
-	l, err := net.Listen("tcp", settings.Args.IP+":"+settings.Args.Port)
-	if l != nil {
-		l.Close()
+	if httpListener == nil {
+		if settings.Args.Port == "" {
+			settings.Args.Port = "8090"
+		}
+
+		log.TLogln("Check web port", settings.Args.Port)
+		var err error
+		httpListener, err = net.Listen("tcp", net.JoinHostPort(settings.Args.IP, settings.Args.Port))
+		if err != nil {
+			return fmt.Errorf("port %s already in use for HTTP: %w", settings.Args.Port, err)
+		}
 	}
-	if err != nil {
-		log.TLogln("Port", settings.Args.Port, "already in use! Please set different port for HTTP. Abort")
-		os.Exit(1)
+
+	if tcpAddr, ok := httpListener.Addr().(*net.TCPAddr); ok {
+		settings.Args.Port = strconv.Itoa(tcpAddr.Port)
 	}
-	// remove old disk caches
+
 	go cleanCache()
-	// set settings http and https ports. Start web server.
 	settings.Port = settings.Args.Port
 	settings.SslPort = settings.Args.SslPort
 	settings.IP = settings.Args.IP
@@ -72,7 +74,8 @@ func Start() {
 	if settings.Args.TGToken != "" {
 		tgbot.Start(settings.Args.TGToken)
 	}
-	web.Start()
+
+	return web.Start(httpListener)
 }
 
 func cleanCache() {

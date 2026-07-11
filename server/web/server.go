@@ -1,9 +1,13 @@
 package web
 
 import (
+	"context"
+	"errors"
 	"net"
-	"os"
+	"net/http"
 	"sort"
+	"strconv"
+	"sync"
 	"time"
 
 	"server/torrfs/fuse"
@@ -34,8 +38,11 @@ import (
 )
 
 var (
-	BTS      = torr.NewBTS()
-	waitChan = make(chan error)
+	BTS         = torr.NewBTS()
+	waitChan    = make(chan error, 2)
+	httpServer  *http.Server
+	httpsServer *http.Server
+	stopOnce    sync.Once
 )
 
 //	@title			Swagger Torrserver API
@@ -50,7 +57,12 @@ var (
 
 // @externalDocs.description	OpenAPI
 // @externalDocs.url			https://swagger.io/resources/open-api/
-func Start() {
+func Start(httpListener net.Listener) error {
+	waitChan = make(chan error, 2)
+	httpServer = nil
+	httpsServer = nil
+	stopOnce = sync.Once{}
+
 	log.TLogln("Start TorrServer " + version.Version + " torrent " + version.GetTorrentVersion())
 	ips := GetLocalIps()
 	if len(ips) > 0 {
@@ -58,8 +70,8 @@ func Start() {
 	}
 	err := BTS.Connect()
 	if err != nil {
-		log.TLogln("BTS.Connect() error!", err) // waitChan <- err
-		os.Exit(1)                              // return
+		log.TLogln("BTS.Connect() error!", err)
+		return err
 	}
 	rutor.Start()
 
@@ -109,33 +121,52 @@ func Start() {
 
 	route.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// check if https enabled
 	if settings.Ssl {
-		// if no cert and key files set in db/settings, generate new self-signed cert and key files
 		if settings.BTsets.SslCert == "" || settings.BTsets.SslKey == "" {
 			settings.BTsets.SslCert, settings.BTsets.SslKey = sslcerts.MakeCertKeyFiles(ips)
 			log.TLogln("Saving path to ssl cert and key in db", settings.BTsets.SslCert, settings.BTsets.SslKey)
 			settings.SetBTSets(settings.BTsets)
 		}
-		// verify if cert and key files are valid
 		err = sslcerts.VerifyCertKeyFiles(settings.BTsets.SslCert, settings.BTsets.SslKey, settings.SslPort)
-		// if not valid, generate new self-signed cert and key files
 		if err != nil {
 			log.TLogln("Error checking certificate and private key files:", err)
 			settings.BTsets.SslCert, settings.BTsets.SslKey = sslcerts.MakeCertKeyFiles(ips)
 			log.TLogln("Saving path to ssl cert and key in db", settings.BTsets.SslCert, settings.BTsets.SslKey)
 			settings.SetBTSets(settings.BTsets)
 		}
+
+		httpsListener, listenErr := net.Listen("tcp", net.JoinHostPort(settings.IP, settings.SslPort))
+		if listenErr != nil {
+			return listenErr
+		}
+		if tcpAddr, ok := httpsListener.Addr().(*net.TCPAddr); ok {
+			settings.SslPort = strconv.Itoa(tcpAddr.Port)
+		}
+
+		httpsServer = &http.Server{Handler: route}
 		go func() {
-			log.TLogln("Start https server at", settings.IP+":"+settings.SslPort)
-			waitChan <- route.RunTLS(settings.IP+":"+settings.SslPort, settings.BTsets.SslCert, settings.BTsets.SslKey)
+			log.TLogln("Start https server at", httpsListener.Addr().String())
+			waitChan <- normalizeServeErr(httpsServer.ServeTLS(httpsListener, settings.BTsets.SslCert, settings.BTsets.SslKey))
 		}()
 	}
 
+	if httpListener == nil {
+		httpListener, err = net.Listen("tcp", net.JoinHostPort(settings.IP, settings.Port))
+		if err != nil {
+			return err
+		}
+	}
+	if tcpAddr, ok := httpListener.Addr().(*net.TCPAddr); ok {
+		settings.Port = strconv.Itoa(tcpAddr.Port)
+	}
+
+	httpServer = &http.Server{Handler: route}
 	go func() {
-		log.TLogln("Start http server at", settings.IP+":"+settings.Port)
-		waitChan <- route.Run(settings.IP + ":" + settings.Port)
+		log.TLogln("Start http server at", httpListener.Addr().String())
+		waitChan <- normalizeServeErr(httpServer.Serve(httpListener))
 	}()
+
+	return nil
 }
 
 func Wait() error {
@@ -143,11 +174,28 @@ func Wait() error {
 }
 
 func Stop() {
-	dlna.Stop()
-	// Unmount FUSE filesystem if mounted
-	fuse.FuseCleanup()
-	BTS.Disconnect()
-	waitChan <- nil
+	stopOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if httpServer != nil {
+			_ = httpServer.Shutdown(ctx)
+		}
+		if httpsServer != nil {
+			_ = httpsServer.Shutdown(ctx)
+		}
+
+		dlna.Stop()
+		fuse.FuseCleanup()
+		BTS.Disconnect()
+	})
+}
+
+func normalizeServeErr(err error) error {
+	if err == nil || errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 // echo godoc

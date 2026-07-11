@@ -15,9 +15,7 @@ import (
 	"server/torr/utils"
 
 	"github.com/alexflint/go-arg"
-	"github.com/pkg/browser"
 
-	"server"
 	"server/docs"
 	"server/log"
 	"server/settings"
@@ -38,7 +36,7 @@ type args struct {
 	RDB         bool   `arg:"-r" help:"start in read-only DB mode"`
 	HttpAuth    bool   `arg:"-a" help:"enable http auth on all requests"`
 	DontKill    bool   `arg:"-k" help:"don't kill server on signal"`
-	UI          bool   `arg:"-u" help:"open torrserver page in browser"`
+	UI          bool   `arg:"-u" help:"deprecated, ignored in desktop mode"`
 	TorrentsDir string `arg:"-t" help:"autoload torrents from dir"`
 	TorrentAddr string `help:"Torrent client address, like 127.0.0.1:1337 (default :PeersListenPort)"`
 	PubIPv4     string `arg:"-4" help:"set public IPv4 addr"`
@@ -62,13 +60,22 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	arg.MustParse(&params)
+	configureRuntime()
 
-	if params.Path == "" {
-		params.Path, _ = os.Getwd()
+	if err := runApp(); err != nil {
+		log.TLogln("Application error:", err)
+		fmt.Fprintln(os.Stderr, err)
+		log.Close()
+		time.Sleep(200 * time.Millisecond)
+		os.Exit(1)
 	}
 
-	if params.Port == "" {
-		params.Port = "8090"
+	log.Close()
+}
+
+func configureRuntime() {
+	if params.Path == "" {
+		params.Path, _ = os.Getwd()
 	}
 
 	settings.Path = params.Path
@@ -102,19 +109,6 @@ func main() {
 	// 	fmt.Println("DNS resolved:", addrs)
 	// }
 
-	Preconfig(params.DontKill)
-
-	if params.UI {
-		go func() {
-			time.Sleep(time.Second)
-			if params.Ssl {
-				browser.OpenURL("https://127.0.0.1:" + params.SslPort)
-			} else {
-				browser.OpenURL("http://127.0.0.1:" + params.Port)
-			}
-		}()
-	}
-
 	if params.TorrentAddr != "" {
 		settings.TorAddr = params.TorrentAddr
 	}
@@ -125,10 +119,6 @@ func main() {
 
 	if params.PubIPv6 != "" {
 		settings.PubIPv6 = params.PubIPv6
-	}
-
-	if params.TorrentsDir != "" {
-		go watchTDir(params.TorrentsDir)
 	}
 
 	if params.MaxSize != "" {
@@ -146,7 +136,15 @@ func main() {
 		params.ProxyMode = "tracker"
 	}
 
-	settings.Args = &settings.ExecArgs{
+	settings.Args = buildExecArgs()
+
+	if params.ProxyURL != "" {
+		log.TLogln("Proxy configured from CLI:", params.ProxyURL, "mode:", settings.Args.ProxyMode)
+	}
+}
+
+func buildExecArgs() *settings.ExecArgs {
+	return &settings.ExecArgs{
 		Port:        params.Port,
 		IP:          params.IP,
 		Ssl:         params.Ssl,
@@ -172,16 +170,14 @@ func main() {
 		ProxyURL:    params.ProxyURL,
 		ProxyMode:   params.ProxyMode,
 	}
+}
 
-	if params.ProxyURL != "" {
-		log.TLogln("Proxy configured from CLI:", params.ProxyURL, "mode:", settings.Args.ProxyMode)
+func startBackgroundTasks() {
+	Preconfig(params.DontKill)
+
+	if params.TorrentsDir != "" {
+		go watchTDir(params.TorrentsDir)
 	}
-
-	server.Start()
-	log.TLogln(server.WaitServer())
-	log.Close()
-	time.Sleep(time.Second * 3)
-	os.Exit(0)
 }
 
 func watchTDir(dir string) {
