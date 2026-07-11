@@ -81,6 +81,9 @@ func configureRuntime() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if params.LogPath == "" {
+		params.LogPath = defaultLogPath(params.Path)
+	}
 
 	settings.Path = params.Path
 	settings.HttpAuth = params.HttpAuth

@@ -200,7 +200,7 @@ func RouteWebPages(route gin.IRouter) {
 		etag := fmt.Sprintf("%x", md5.Sum(Browserconfigxml))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "text/xml; charset=utf-8", Browserconfigxml)
+		c.Data(200, "application/xml; charset=utf-8", Browserconfigxml)
 	})
 
 	route.GET("/dlnaicon-120.png", func(c *gin.Context) {
@@ -273,38 +273,38 @@ func RouteWebPages(route gin.IRouter) {
 		c.Data(200, "application/manifest+json", Sitewebmanifest)
 	})
 
-	route.GET("/static/VLC_logo-DDPxndHg.svg", func(c *gin.Context) {
-		etag := fmt.Sprintf("%x", md5.Sum(StaticVLClogoDDPxndHgsvg))
+	route.GET("/static/VLC_logo-Drd2yZSZ.svg", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(StaticVLClogoDrd2yZSZsvg))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "image/svg+xml", StaticVLClogoDDPxndHgsvg)
+		c.Data(200, "image/svg+xml", StaticVLClogoDrd2yZSZsvg)
 	})
 
 	route.GET("/static/__federation_expose_Hosts-Bnbga9PS.js", func(c *gin.Context) {
 		etag := fmt.Sprintf("%x", md5.Sum(StaticfederationexposeHostsBnbga9PSjs))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "application/javascript; charset=utf-8", StaticfederationexposeHostsBnbga9PSjs)
+		c.Data(200, "text/javascript; charset=utf-8", StaticfederationexposeHostsBnbga9PSjs)
 	})
 
-	route.GET("/static/__federation_expose_TorrServerEntry-BuvKoWXM.js", func(c *gin.Context) {
-		etag := fmt.Sprintf("%x", md5.Sum(StaticfederationexposeTorrServerEntryBuvKoWXMjs))
+	route.GET("/static/__federation_expose_TorrServerEntry-DPSInhhD.js", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(StaticfederationexposeTorrServerEntryDPSInhhDjs))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "application/javascript; charset=utf-8", StaticfederationexposeTorrServerEntryBuvKoWXMjs)
+		c.Data(200, "text/javascript; charset=utf-8", StaticfederationexposeTorrServerEntryDPSInhhDjs)
 	})
 
-	route.GET("/static/index-ypfrRQ61.js", func(c *gin.Context) {
-		etag := fmt.Sprintf("%x", md5.Sum(StaticindexypfrRQ61js))
+	route.GET("/static/index-BdsWDcn_.js", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(StaticindexBdsWDcnjs))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "application/javascript; charset=utf-8", StaticindexypfrRQ61js)
+		c.Data(200, "text/javascript; charset=utf-8", StaticindexBdsWDcnjs)
 	})
 
 	route.GET("/static/torrent-server-entry.js", func(c *gin.Context) {
 		etag := fmt.Sprintf("%x", md5.Sum(Statictorrentserverentryjs))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "application/javascript; charset=utf-8", Statictorrentserverentryjs)
+		c.Data(200, "text/javascript; charset=utf-8", Statictorrentserverentryjs)
 	})
 }

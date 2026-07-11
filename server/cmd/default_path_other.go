@@ -1,5 +1,5 @@
-//go:build !ios
-// +build !ios
+//go:build !ios && !darwin
+// +build !ios,!darwin
 
 package main
 
@@ -11,4 +11,8 @@ func defaultDataPath() string {
 		return "."
 	}
 	return path
+}
+
+func defaultLogPath(dataPath string) string {
+	return ""
 }

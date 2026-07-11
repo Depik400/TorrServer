@@ -9,5 +9,6 @@ cd ..
 
 go run gen_web.go
 
-cd server
-fyne package -os ios -app-id org.yourok.torrserver -icon ../web/public/icon.png
+cd server/cmd 
+
+~/go/bin/fyne package -os ios -app-id org.yourok.torrserver --name TorrServer -icon ../../web/public/icon.png

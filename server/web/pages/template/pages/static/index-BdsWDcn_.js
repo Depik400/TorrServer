@@ -1,4 +1,4 @@
-import { applicationMount } from "./__federation_expose_TorrServerEntry-BuvKoWXM.js";
+import { applicationMount } from "./__federation_expose_TorrServerEntry-DPSInhhD.js";
 (function polyfill() {
   const relList = document.createElement("link").relList;
   if (relList && relList.supports && relList.supports("modulepreload")) return;

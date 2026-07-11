@@ -1,5 +1,5 @@
-//go:build !windows && !ios
-// +build !windows,!ios
+//go:build !windows && !ios && !darwin
+// +build !windows,!ios,!darwin
 
 package main
 

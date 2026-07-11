@@ -40111,7 +40111,7 @@ const playableExtList = [
   "xm"
 ];
 const isFilePlayable = (fileName) => playableExtList.includes(getExt(fileName));
-const VlcLogoSvg = "/static/VLC_logo-DDPxndHg.svg";
+const VlcLogoSvg = "/static/VLC_logo-Drd2yZSZ.svg";
 const Content$2 = qe.div`
   ${({
   isLoading,

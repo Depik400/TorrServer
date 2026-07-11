@@ -1,5 +1,5 @@
-//go:build ios
-// +build ios
+//go:build darwin
+// +build darwin
 
 package main
 
@@ -13,7 +13,7 @@ func defaultDataPath() string {
 	if err != nil || home == "" {
 		return filepath.Join(os.TempDir(), "TorrServer")
 	}
-	return filepath.Join(home, "Documents", "TorrServer")
+	return filepath.Join(home, "Library", "Application Support", "TorrServer")
 }
 
 func defaultLogPath(dataPath string) string {
