@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -560,4 +561,142 @@ func (e *Engine) EngineStatus() map[string]interface{} {
 	}
 
 	return status
+}
+
+func (e *Engine) ChunkMap(sessionID string, prevGen int) (map[string]interface{}, error) {
+	e.mu.Lock()
+	session, ok := e.sessions[sessionID]
+	e.mu.Unlock()
+	if !ok {
+		return nil, newEngineError(ErrStreamNotFound, "session not found: "+sessionID)
+	}
+
+	tr := session.torrent
+	if tr == nil {
+		return nil, newEngineError(ErrTorrentNotFound, "torrent not available")
+	}
+
+	rawT := tr.Torrent
+	if rawT == nil || rawT.Info() == nil {
+		return nil, newEngineError(ErrTorrentNotFound, "torrent info not available")
+	}
+
+	pieceLen := rawT.Info().PieceLength
+	allPieces := rawT.NumPieces()
+	fileFirstPiece := 0
+	fileLastPiece := allPieces - 1
+
+	if session.torrentFile != nil {
+		f := session.torrentFile
+		fileFirstPiece = int(f.Offset() / pieceLen)
+		fileLastPiece = int((f.Offset() + f.Length() - 1) / pieceLen)
+		if fileLastPiece >= allPieces {
+			fileLastPiece = allPieces - 1
+		}
+	}
+
+	runs := rawT.PieceStateRuns()
+	ranges := compressRanges(runs)
+
+	return map[string]interface{}{
+		"generation":     0,
+		"pieceLength":     pieceLen,
+		"pieceCount":      allPieces,
+		"fileFirstPiece":  fileFirstPiece,
+		"fileLastPiece":   fileLastPiece,
+		"readerPieces":    []int{},
+		"ranges":          ranges,
+	}, nil
+}
+
+type chunkRangeJSON struct {
+	From  int    `json:"from"`
+	To    int    `json:"to"`
+	State string `json:"state"`
+}
+
+func compressRanges(runs []torrent.PieceStateRun) []chunkRangeJSON {
+	if len(runs) == 0 {
+		return nil
+	}
+
+	stateStr := func(r torrent.PieceStateRun) string {
+		if r.Complete && r.Ok {
+			return "disk"
+		}
+		if int(r.Priority) == int(torrent.PiecePriorityNow) {
+			return "requested"
+		}
+		if int(r.Priority) > int(torrent.PiecePriorityNone) {
+			return "loading"
+		}
+		if r.Checking {
+			return "loading"
+		}
+		return "missing"
+	}
+
+	var result []chunkRangeJSON
+	current := chunkRangeJSON{From: 0, To: 0, State: stateStr(runs[0])}
+	idx := 0
+
+	for _, run := range runs {
+		s := stateStr(run)
+		runEnd := idx + run.Length - 1
+		if s == current.State {
+			current.To = runEnd
+		} else {
+			result = append(result, current)
+			current = chunkRangeJSON{From: idx, To: runEnd, State: s}
+		}
+		idx += run.Length
+	}
+	result = append(result, current)
+
+	return result
+}
+
+func (e *Engine) Settings() map[string]interface{} {
+	return map[string]interface{}{
+		"ramCacheLimitBytes":  sets.BTsets.CacheSize,
+		"connectionsLimit":    sets.BTsets.ConnectionsLimit,
+		"disableUpload":       sets.BTsets.DisableUpload,
+		"downloadRateLimitKB": sets.BTsets.DownloadRateLimit,
+		"uploadRateLimitKB":   sets.BTsets.UploadRateLimit,
+	}
+}
+
+func (e *Engine) UpdateSettings(jsonStr string) error {
+	var req map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonStr), &req); err != nil {
+		return newEngineError(ErrInvalidJSON, err.Error())
+	}
+
+	if v, ok := req["ramCacheLimitBytes"]; ok {
+		if val, ok := v.(float64); ok {
+			sets.BTsets.CacheSize = int64(val)
+		}
+	}
+	if v, ok := req["connectionsLimit"]; ok {
+		if val, ok := v.(float64); ok {
+			sets.BTsets.ConnectionsLimit = int(val)
+		}
+	}
+	if v, ok := req["downloadRateLimitKB"]; ok {
+		if val, ok := v.(float64); ok {
+			sets.BTsets.DownloadRateLimit = int(val)
+		}
+	}
+	if v, ok := req["uploadRateLimitKB"]; ok {
+		if val, ok := v.(float64); ok {
+			sets.BTsets.UploadRateLimit = int(val)
+		}
+	}
+	if v, ok := req["disableUpload"]; ok {
+		if val, ok := v.(bool); ok {
+			sets.BTsets.DisableUpload = val
+		}
+	}
+
+	return nil
 }

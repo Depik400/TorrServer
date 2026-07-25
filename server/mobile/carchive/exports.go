@@ -198,3 +198,44 @@ func TS_CancelStream(sessionID *C.char) *C.char {
 		return nil, eng.CancelStream(fromCString(sessionID))
 	})
 }
+
+//export TS_ChunkMap
+func TS_ChunkMap(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			SessionID string `json:"sessionId"`
+			PrevGen   int    `json:"prevGen,omitempty"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		return eng.ChunkMap(req.SessionID, req.PrevGen)
+	})
+}
+
+//export TS_Settings
+func TS_Settings() *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+		return eng.Settings(), nil
+	})
+}
+
+//export TS_UpdateSettings
+func TS_UpdateSettings(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+		return nil, eng.UpdateSettings(fromCString(requestJSON))
+	})
+}
