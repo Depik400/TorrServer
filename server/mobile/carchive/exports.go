@@ -121,7 +121,19 @@ func TS_AddTorrent(requestJSON *C.char) *C.char {
 		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
 			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
 		}
-		return eng.AddTorrent(req.Link, req.Title)
+
+		var result interface{}
+		var addErr error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					addErr = core.NewEngineError(core.ErrTorrentAddFailed,
+						fmt.Sprintf("torrent add panic: %v", r))
+				}
+			}()
+			result, addErr = eng.AddTorrent(req.Link, req.Title)
+		}()
+		return result, addErr
 	})
 }
 

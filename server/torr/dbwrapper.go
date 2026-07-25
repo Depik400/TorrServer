@@ -3,6 +3,7 @@ package torr
 import (
 	"encoding/json"
 
+	"server/log"
 	"server/settings"
 	"server/torr/state"
 	"server/torr/utils"
@@ -17,13 +18,22 @@ type tsFiles struct {
 }
 
 func AddTorrentDB(torr *Torrent) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.TLogln("AddTorrentDB panic:", r)
+		}
+	}()
+
 	t := new(settings.TorrentDB)
 	t.TorrentSpec = torr.TorrentSpec
 	t.Title = torr.Title
 	t.Category = torr.Category
 	if torr.Data == "" {
 		files := new(tsFiles)
-		files.TorrServer.Files = torr.Status().FileStats
+		status := torr.Status()
+		if status != nil {
+			files.TorrServer.Files = status.FileStats
+		}
 		buf, err := json.Marshal(files)
 		if err == nil {
 			t.Data = string(buf)
@@ -39,10 +49,11 @@ func AddTorrentDB(torr *Torrent) {
 	if t.Size == 0 && torr.Torrent != nil {
 		t.Size = torr.Torrent.Length()
 	}
-	// don't override timestamp from DB on edit
-	t.Timestamp = torr.Timestamp // time.Now().Unix()
+	t.Timestamp = torr.Timestamp
 
-	settings.AddTorrent(t)
+	if t.TorrentSpec != nil {
+		settings.AddTorrent(t)
+	}
 }
 
 func GetTorrentDB(hash metainfo.Hash) *Torrent {
