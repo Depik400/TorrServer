@@ -432,12 +432,15 @@ func (e *Engine) ListTorrents() (interface{}, error) {
 	for _, tr := range list {
 		st := tr.Status()
 		result = append(result, map[string]interface{}{
-			"hash":    st.Hash,
-			"title":   st.Title,
-			"state":   st.StatString,
-			"size":    st.TorrentSize,
-			"poster":  st.Poster,
-			"added":   st.Timestamp,
+			"hash":          st.Hash,
+			"title":         st.Title,
+			"state":         st.StatString,
+			"size":          st.TorrentSize,
+			"loadedSize":    st.BytesReadUsefulData,
+			"downloadSpeed": st.DownloadSpeed,
+			"uploadSpeed":   st.UploadSpeed,
+			"poster":        st.Poster,
+			"added":         st.Timestamp,
 		})
 	}
 	return result, nil
