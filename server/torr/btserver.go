@@ -70,6 +70,14 @@ func (bt *BTServer) Connect() error {
 	return err
 }
 
+func (bt *BTServer) RamStats() (filled int64, capacity int64) {
+	if bt.storage != nil {
+		filled = bt.storage.TotalFilled()
+		capacity = bt.storage.Capacity()
+	}
+	return
+}
+
 func (bt *BTServer) Disconnect() {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()

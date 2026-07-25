@@ -70,3 +70,17 @@ func (s *Storage) GetCache(hash metainfo.Hash) *Cache {
 	}
 	return nil
 }
+
+func (s *Storage) TotalFilled() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var total int64
+	for _, cache := range s.caches {
+		total += cache.filled
+	}
+	return total
+}
+
+func (s *Storage) Capacity() int64 {
+	return s.capacity
+}

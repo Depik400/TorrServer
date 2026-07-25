@@ -262,6 +262,10 @@ func (s *StreamSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer reader.Close()
 
+	if rr, ok := interface{}(readerIface).(interface{ SetReadahead(int64) }); ok {
+		rr.SetReadahead(64 << 20)
+	}
+
 	if set.BTsets.ResponsiveMode {
 		if sr, ok := interface{}(readerIface).(interface{ SetResponsive() }); ok {
 			sr.SetResponsive()

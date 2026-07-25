@@ -657,6 +657,12 @@ func (e *Engine) EngineStatus() map[string]interface{} {
 	if e.state == EngineRunning {
 		status["port"] = e.port
 		status["baseURL"] = e.baseURL
+
+		if e.bt != nil {
+			filled, capacity := e.bt.RamStats()
+			status["ramUsed"] = filled
+			status["ramTotal"] = capacity
+		}
 	}
 
 	return status
