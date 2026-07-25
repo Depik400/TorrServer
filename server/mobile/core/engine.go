@@ -359,7 +359,10 @@ func (e *Engine) AddTorrent(link, title string) (map[string]interface{}, error) 
 		return nil, newEngineError(ErrTorrentAddFailed, "failed to add torrent: "+err.Error())
 	}
 
-	torr.SaveTorrentToDB(tr)
+	go func() {
+		defer func() { _ = recover() }()
+		torr.SaveTorrentToDB(tr)
+	}()
 
 	hash := tr.Hash().HexString()
 	return map[string]interface{}{
