@@ -46,8 +46,8 @@ func (c *Config) validate() error {
 	if c.ListenHost == "" {
 		c.ListenHost = "127.0.0.1"
 	}
-	if c.ListenHost != "127.0.0.1" && c.ListenHost != "::1" {
-		return newEngineError(ErrInvalidArgument, "listenHost must be 127.0.0.1 or ::1")
+	if c.ListenHost != "127.0.0.1" && c.ListenHost != "::1" && c.ListenHost != "0.0.0.0" {
+		return newEngineError(ErrInvalidArgument, "listenHost must be 127.0.0.1, ::1, or 0.0.0.0")
 	}
 
 	if c.ListenPort < 0 || c.ListenPort > 65535 {
