@@ -253,10 +253,16 @@ func dropAllTorrent() {
 }
 
 func Shutdown() {
-	bts.Disconnect()
-	sets.CloseDB()
+	ShutdownGraceful()
 	log.TLogln("Received shutdown. Quit")
 	os.Exit(0)
+}
+
+func ShutdownGraceful() {
+	if bts != nil {
+		bts.Disconnect()
+	}
+	sets.CloseDB()
 }
 
 func WriteStatus(w io.Writer) {

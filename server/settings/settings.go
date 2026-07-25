@@ -37,20 +37,18 @@ var (
 	MaxSize  int64
 )
 
-func InitSets(readOnly, searchWA bool) {
+func InitSetsE(readOnly, searchWA bool) error {
 	ReadOnly = readOnly
 	SearchWA = searchWA
 
 	bboltDB := NewTDB()
 	if bboltDB == nil {
-		log.TLogln("Error open bboltDB:", filepath.Join(Path, "config.db"))
-		os.Exit(1)
+		return fmt.Errorf("error open bboltDB: %s", filepath.Join(Path, "config.db"))
 	}
 
 	jsonDB := NewJsonDB()
 	if jsonDB == nil {
-		log.TLogln("Error open jsonDB")
-		os.Exit(1)
+		return fmt.Errorf("error open jsonDB")
 	}
 
 	// Optional forced migration (for manual control)
@@ -84,6 +82,14 @@ func InitSets(readOnly, searchWA bool) {
 	MigrateTorrents()
 
 	logConfiguration(settingsStoragePref, viewedStoragePref)
+	return nil
+}
+
+func InitSets(readOnly, searchWA bool) {
+	if err := InitSetsE(readOnly, searchWA); err != nil {
+		log.TLogln(err)
+		os.Exit(1)
+	}
 }
 
 func determineStoragePreferences(bboltDB, jsonDB TorrServerDB) (settingsInJson, viewedInJson bool) {
@@ -449,4 +455,6 @@ func CloseDB() {
 	if tdb != nil {
 		tdb.CloseDB()
 	}
+	globalJsonDB = nil
+	tdb = nil
 }

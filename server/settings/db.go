@@ -39,6 +39,7 @@ func (v *TDB) CloseDB() {
 		v.db.Close()
 		v.db = nil
 	}
+	globalBboltDB = nil
 }
 
 func (v *TDB) Get(xpath, name string) []byte {

@@ -34,5 +34,6 @@ toolchains/
 /src/go.etcd.io/
 /src/google.golang.org/
 /toolchain/
+/build/ios/
 /server/web/pages/template/pages/msx
 

@@ -1,0 +1,4 @@
+module TorrCore {
+    header "TorrCore.h"
+    export *
+}

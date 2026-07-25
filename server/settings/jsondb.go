@@ -29,7 +29,7 @@ func NewJsonDB() TorrServerDB {
 	if globalJsonDB != nil {
 		return globalJsonDB
 	}
-	globalJsonDB := &JsonDB{
+	globalJsonDB = &JsonDB{
 		Path:              Path,
 		filenameDelimiter: ".",
 		filenameExtension: ".json",
@@ -40,7 +40,7 @@ func NewJsonDB() TorrServerDB {
 }
 
 func (v *JsonDB) CloseDB() {
-	// Not necessary
+	globalJsonDB = nil
 }
 
 func (v *JsonDB) Set(xPath, name string, value []byte) {
