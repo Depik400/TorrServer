@@ -417,7 +417,7 @@ func (e *Engine) ListTorrents() (interface{}, error) {
 	}
 
 	list := torr.ListTorrent()
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0)
 	for _, tr := range list {
 		st := tr.Status()
 		result = append(result, map[string]interface{}{
