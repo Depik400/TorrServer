@@ -1,11 +1,13 @@
 package core
 
 import (
+	"archive/zip"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -161,6 +163,7 @@ func (e *Engine) Start(configJSON string) error {
 	mux.HandleFunc("/health", e.handleHealth)
 	mux.HandleFunc("/stream/", e.handleStream)
 	mux.HandleFunc("/status/", e.handleStatus)
+	mux.HandleFunc("/downloadzip", e.handleDownloadZip)
 
 	e.httpServer = &http.Server{
 		Handler:           mux,
@@ -339,6 +342,71 @@ func (e *Engine) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(session.StatusJSON())
+}
+
+func (e *Engine) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != e.authToken {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	hashHex := r.URL.Query().Get("torrent")
+	if hashHex == "" {
+		http.Error(w, "Missing torrent parameter", http.StatusBadRequest)
+		return
+	}
+
+	tr := torr.GetTorrent(hashHex)
+	if tr == nil {
+		http.Error(w, "Torrent not found", http.StatusNotFound)
+		return
+	}
+	if tr.Torrent == nil || tr.Torrent.Info() == nil {
+		http.Error(w, "Torrent metadata not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	files := tr.Torrent.Files()
+	if len(files) == 0 {
+		http.Error(w, "No files in torrent", http.StatusNotFound)
+		return
+	}
+
+	title := tr.Title
+	if title == "" {
+		title = tr.Torrent.Info().Name
+	}
+	if title == "" {
+		title = hashHex
+	}
+	safeName := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, title)
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.zip"`, safeName))
+	w.Header().Set("Transfer-Encoding", "chunked")
+
+	info := tr.Torrent.Info()
+	zipw := zip.NewWriter(w)
+	defer zipw.Close()
+
+	for _, f := range files {
+		name := f.DisplayPath()
+		zf, err := zipw.Create(info.Name + "/" + name)
+		if err != nil {
+			continue
+		}
+
+		reader := f.NewReader()
+		defer reader.Close()
+		io.Copy(zf, reader)
+	}
+	w.(http.Flusher).Flush()
 }
 
 func (e *Engine) AddTorrent(link, title string) (map[string]interface{}, error) {
