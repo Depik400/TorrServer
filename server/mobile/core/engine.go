@@ -91,7 +91,7 @@ func (e *Engine) Start(configJSON string) error {
 	engineMu.Unlock()
 
 	e.mu.Lock()
-	if e.state != EngineStopped && e.state != EngineFailed {
+	if e.state != "" && e.state != EngineStopped && e.state != EngineFailed {
 		e.mu.Unlock()
 		return newEngineError(ErrEngineAlreadyRunning, "engine is not in stopped state")
 	}
