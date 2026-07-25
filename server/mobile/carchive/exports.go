@@ -170,6 +170,14 @@ func TS_DropTorrent(hash *C.char) *C.char {
 	})
 }
 
+//export TS_WarmupTorrents
+func TS_WarmupTorrents() {
+	eng := core.GetEngine()
+	if eng != nil {
+		eng.WarmupTorrents()
+	}
+}
+
 //export TS_PrepareStream
 func TS_PrepareStream(requestJSON *C.char) *C.char {
 	return exportJSON(func() (interface{}, error) {

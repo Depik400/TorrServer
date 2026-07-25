@@ -458,6 +458,20 @@ func (e *Engine) DropTorrent(hash string) error {
 	return nil
 }
 
+func (e *Engine) WarmupTorrents() {
+	e.mu.Lock()
+	running := e.state == EngineRunning
+	e.mu.Unlock()
+	if !running {
+		return
+	}
+
+	list := torr.ListTorrentsDB()
+	for hash := range list {
+		torr.GetTorrent(hash.HexString())
+	}
+}
+
 func (e *Engine) PrepareStream(hash string, fileID int) (map[string]interface{}, error) {
 	e.mu.Lock()
 	if e.state != EngineRunning {
