@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/missinggo/v2/httptoo"
 	"github.com/anacrolix/torrent"
 
@@ -118,20 +117,12 @@ func (t *Torrent) Stream(fileID int, req *http.Request, resp http.ResponseWriter
 	// Add ETag
 	etag := hex.EncodeToString([]byte(fmt.Sprintf("%s/%s", t.Hash().HexString(), file.Path())))
 	resp.Header().Set("ETag", httptoo.EncodeQuotedString(etag))
-	// DLNA headers
-	resp.Header().Set("transferMode.dlna.org", "Streaming")
-	// add MimeType
+	setDLNAHeaders(resp)
 	mime, err := mt.MimeTypeByPath(file.Path())
 	if err == nil && mime.IsMedia() {
 		resp.Header().Set("content-type", mime.String())
 	}
-	// DLNA Seek
-	if req.Header.Get("getContentFeatures.dlna.org") != "" {
-		resp.Header().Set("contentFeatures.dlna.org", dlna.ContentFeatures{
-			SupportRange:    true,
-			SupportTimeSeek: true,
-		}.String())
-	}
+	setDLNAContentFeatures(resp, req)
 	// Add support for range requests
 	if req.Header.Get("Range") != "" {
 		resp.Header().Set("Accept-Ranges", "bytes")

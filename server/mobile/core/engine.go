@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anacrolix/torrent"
+
 	"server/log"
 	sets "server/settings"
 	"server/torr"
@@ -208,7 +210,7 @@ func (e *Engine) Stop() error {
 
 	e.mu.Lock()
 	for _, session := range e.sessions {
-		session.cancel()
+		session.Cancel()
 	}
 	e.mu.Unlock()
 
@@ -474,23 +476,36 @@ func (e *Engine) PrepareStream(hash string, fileID int) (map[string]interface{},
 		return nil, newEngineError(ErrFileNotFound, fmt.Sprintf("file id %d not found in torrent", fileID))
 	}
 
+	var torrentFile *torrent.File
+	files := tr.Files()
+	if files != nil {
+		for _, f := range files {
+			if f.Path() == filePath {
+				torrentFile = f
+				break
+			}
+		}
+	}
+
 	e.sessionSeq++
 	sessionID := fmt.Sprintf("s%d", e.sessionSeq)
 	fileName := filepath.Base(filePath)
 
 	ctx, cancel := context.WithCancel(e.ctx)
 	session := &StreamSession{
-		ID:         sessionID,
-		Hash:       hash,
-		FileID:     fileID,
-		FileName:   fileName,
-		FileLength: fileLength,
-		CreatedAt:  time.Now(),
-		engine:     e,
-		torrent:    tr,
-		ctx:        ctx,
-		cancel:     cancel,
-		done:       make(chan struct{}),
+		ID:          sessionID,
+		Hash:        hash,
+		FileID:      fileID,
+		FileName:    fileName,
+		FileLength:  fileLength,
+		CreatedAt:   time.Now(),
+		state:       SessionReady,
+		torrentFile: torrentFile,
+		engine:      e,
+		torrent:     tr,
+		ctx:         ctx,
+		cancel:      cancel,
+		done:        make(chan struct{}),
 	}
 
 	e.mu.Lock()
@@ -524,7 +539,7 @@ func (e *Engine) CancelStream(sessionID string) error {
 	if !ok {
 		return nil
 	}
-	session.cancel()
+	session.Cancel()
 	delete(e.sessions, sessionID)
 	return nil
 }
