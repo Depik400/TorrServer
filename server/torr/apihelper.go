@@ -81,6 +81,9 @@ func AddTorrent(spec *torrent.TorrentSpec, title, poster string, data string, ca
 }
 
 func SaveTorrentToDB(torr *Torrent) {
+	if torr == nil || torr.TorrentSpec == nil {
+		return
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			log.TLogln("SaveTorrentToDB panic:", r)
