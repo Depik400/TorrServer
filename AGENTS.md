@@ -2,6 +2,24 @@
 
 Mobile-friendly fork of TorrServer — local torrent engine for iOS.
 
+## Folder Layout
+
+```
+TorrServerIos/
+  TorrServerLibrary/        ← THIS REPO — Go engine (branch feat/native-ios-app)
+  TorrServerCoreBridge/     ← Swift SPM package, wraps xcframework
+  TorrServerClient/         ← iOS app, depends on CoreBridge via SPM
+```
+
+## How it works together
+
+1. **TorrServerLibrary** — Go source. Compiled to `TorrCore.xcframework` (C archive).
+2. **TorrServerCoreBridge** — Swift Package. Commits the xcframework. Wraps C functions in a Swift `actor TorrCoreClient`.
+3. **TorrServerClient** — iOS app. Depends on CoreBridge via SPM (`Package.swift`).
+   Also uses `.xcodeproj` for Signing & Capabilities. Widget extension for Live Activity.
+
+Flow: `iOS App → TorrCoreClient (Swift actor) → C-exported functions → Go engine`
+
 ## Build
 
 ```bash
@@ -17,7 +35,7 @@ server/
   main.go          — Original CLI/HTTP entry point (kept for desktop builds)
   mobile/
     core/
-      engine.go    — Engine lifecycle (start/stop/torrents/streams)
+      engine.go    — Engine lifecycle (start/stop/torrents/streams/warmup/downloadzip)
       link.go      — Parse magnet/infohash links
       config.go    — Engine config parsing and validation
     carchive/
@@ -25,7 +43,7 @@ server/
       strings.go   — C string helpers (toCString, fromCString, TS_Free)
   torr/
     torrent.go     — Torrent wrapper (NewTorrent, Status, watch, …)
-    apihelper.go   — SaveTorrentToDB, AddTorrent, GetTorrent
+    apihelper.go   — SaveTorrentToDB, AddTorrent, GetTorrent, ListTorrent
     dbwrapper.go   — AddTorrentDB, GetTorrentDB, ListTorrentsDB
   settings/
     settings.go    — Global init, DB routing
