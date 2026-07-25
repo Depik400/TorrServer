@@ -159,13 +159,25 @@ func (t *Torrent) AddExpiredTime(duration time.Duration) {
 }
 
 func (t *Torrent) watch() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.TLogln("watch panic for", t.Hash(), ":", r)
+		}
+	}()
 	t.progressTicker = time.NewTicker(time.Second)
 	defer t.progressTicker.Stop()
 
 	for {
 		select {
 		case <-t.progressTicker.C:
-			go t.progressEvent()
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.TLogln("progressEvent panic for", t.Hash(), ":", r)
+					}
+				}()
+				t.progressEvent()
+			}()
 		case <-t.closed:
 			return
 		}

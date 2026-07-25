@@ -359,9 +359,17 @@ func (e *Engine) AddTorrent(link, title string) (map[string]interface{}, error) 
 		return nil, newEngineError(ErrTorrentAddFailed, "failed to add torrent: "+err.Error())
 	}
 
+	saveSpec := tr.TorrentSpec
+	saveTitle := tr.Title
 	go func() {
 		defer func() { _ = recover() }()
-		torr.SaveTorrentToDB(tr)
+		if saveSpec == nil {
+			return
+		}
+		t := new(sets.TorrentDB)
+		t.TorrentSpec = saveSpec
+		t.Title = saveTitle
+		sets.AddTorrent(t)
 	}()
 
 	hash := tr.Hash().HexString()
