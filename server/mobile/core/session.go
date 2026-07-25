@@ -245,7 +245,7 @@ func (s *StreamSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	type readSeekCloser interface {
 		Read(p []byte) (n int, err error)
 		Seek(offset int64, whence int) (int64, error)
-		Close() error
+		Close()
 	}
 
 	readerIface := tr.NewReader(file)
@@ -259,7 +259,7 @@ func (s *StreamSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid reader type", http.StatusInternalServerError)
 		return
 	}
-	defer tr.CloseReader(readerIface)
+	defer reader.Close()
 
 	if set.BTsets.ResponsiveMode {
 		if sr, ok := interface{}(readerIface).(interface{ SetResponsive() }); ok {
