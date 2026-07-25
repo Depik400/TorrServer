@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	stdmime "mime"
 	"net/http"
 	"path/filepath"
 	"sync"
@@ -270,6 +271,11 @@ func (s *StreamSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mime, err := mt.MimeTypeByPath(file.Path())
 	if err == nil && mime.IsMedia() {
 		w.Header().Set("Content-Type", mime.String())
+	} else {
+		ext := filepath.Ext(file.Path())
+		if ct := stdmime.TypeByExtension(ext); ct != "" {
+			w.Header().Set("Content-Type", ct)
+		}
 	}
 
 	w.Header().Set("Accept-Ranges", "bytes")

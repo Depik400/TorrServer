@@ -609,6 +609,9 @@ func (e *Engine) PrepareStream(hash string, fileID int) (map[string]interface{},
 	e.sessions[sessionID] = session
 	e.mu.Unlock()
 
+	// Start preloading the file immediately
+	session.pinPieces()
+
 	streamURL := fmt.Sprintf("%s/stream/%s/%s?token=%s", e.baseURL, sessionID, fileName, e.authToken)
 
 	return map[string]interface{}{
