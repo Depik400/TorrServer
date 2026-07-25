@@ -66,7 +66,7 @@ go test -race ./...
 
 ## Лицензия
 
-GPL-3.0 (как оригинальный TorrServer).
+GPL-3.0. Основан на [TorrServer](https://github.com/YouROK/TorrServer) (Copyright 2019-2024 YouROK).
 
 ---
 
