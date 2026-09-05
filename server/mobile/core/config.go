@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 )
@@ -19,9 +20,12 @@ type Config struct {
 	ConnectionsLimit               int    `json:"connectionsLimit"`
 	TorrentDisconnectTimeoutSeconds int   `json:"torrentDisconnectTimeoutSeconds"`
 	DisableUpload                  bool   `json:"disableUpload"`
+	Seed                           bool   `json:"seed"`
 	DisableUPnP                    bool   `json:"disableUPnP"`
 	DisableIPv6                    bool   `json:"disableIPv6"`
 	Debug                          bool   `json:"debug"`
+	ProxyURL                       string `json:"proxyURL"`
+	ProxyMode                      string `json:"proxyMode"`
 }
 
 func ParseConfig(jsonData string) (*Config, error) {
@@ -69,6 +73,32 @@ func (c *Config) validate() error {
 
 	if c.TorrentDisconnectTimeoutSeconds <= 0 {
 		c.TorrentDisconnectTimeoutSeconds = 120
+	}
+
+	if c.ProxyURL != "" {
+		parsedURL, err := url.Parse(c.ProxyURL)
+		if err != nil {
+			return newEngineError(ErrInvalidArgument, "invalid proxyURL: "+err.Error())
+		}
+		switch parsedURL.Scheme {
+		case "socks5", "socks5h", "socks4", "socks4a", "http", "https":
+			// supported (matches torr.BTServer.configureProxy)
+		default:
+			return newEngineError(ErrInvalidArgument, fmt.Sprintf("unsupported proxy scheme: %q (supported: http, https, socks4, socks4a, socks5, socks5h)", parsedURL.Scheme))
+		}
+		if parsedURL.Host == "" {
+			return newEngineError(ErrInvalidArgument, "proxyURL must contain a host:port")
+		}
+		switch c.ProxyMode {
+		case "":
+			c.ProxyMode = "full"
+		case "full", "peers", "tracker":
+			// supported
+		default:
+			return newEngineError(ErrInvalidArgument, fmt.Sprintf("unsupported proxyMode: %q (supported: full, peers, tracker)", c.ProxyMode))
+		}
+	} else {
+		c.ProxyMode = ""
 	}
 
 	if err := os.MkdirAll(c.ApplicationSupportPath, 0755); err != nil {

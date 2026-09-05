@@ -102,6 +102,45 @@ func Limit(i int) *rate.Limiter {
 	return l
 }
 
+// RateLimitBurst is the burst (bytes) used for global rate limiters that must
+// stay tunable at runtime. It is applied even when the limiter is currently
+// unlimited, so SetBurst()/SetLimit() always have a sane handle to work with.
+const RateLimitBurst = 256 * 1024
+
+// LimitBurst builds a *rate.Limiter that always carries a real burst, so the
+// same limiter can be re-tuned live via SetBurst()/SetLimit() - including the
+// transition off rate.Inf. bytesPerSec <= 0 means unlimited.
+func LimitBurst(bytesPerSec int) *rate.Limiter {
+	if bytesPerSec <= 0 {
+		return rate.NewLimiter(rate.Inf, RateLimitBurst)
+	}
+	b := bytesPerSec
+	if b < RateLimitBurst {
+		b = RateLimitBurst
+	}
+	return rate.NewLimiter(rate.Limit(bytesPerSec), b)
+}
+
+// ApplyLimit re-tunes an existing limiter in place. It always sets the burst
+// before the limit so a transition from rate.Inf to a finite rate does not get
+// stuck with burst 0. bytesPerSec <= 0 means unlimited.
+func ApplyLimit(l *rate.Limiter, bytesPerSec int) {
+	if l == nil {
+		return
+	}
+	if bytesPerSec <= 0 {
+		l.SetBurst(RateLimitBurst)
+		l.SetLimit(rate.Inf)
+		return
+	}
+	b := bytesPerSec
+	if b < RateLimitBurst {
+		b = RateLimitBurst
+	}
+	l.SetBurst(b)
+	l.SetLimit(rate.Limit(bytesPerSec))
+}
+
 func OpenTorrentFile(path string) (*torrent.TorrentSpec, error) {
 	minfo, err := metainfo.LoadFromFile(path)
 	if err != nil {

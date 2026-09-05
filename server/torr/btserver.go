@@ -111,6 +111,7 @@ func (bt *BTServer) configure(ctx context.Context) {
 	bt.config.NoDHT = settings.BTsets.DisableDHT
 	bt.config.DisablePEX = settings.BTsets.DisablePEX
 	bt.config.NoUpload = settings.BTsets.DisableUpload
+	bt.config.Seed = settings.BTsets.Seed
 	bt.config.IPBlocklist = blocklist
 	bt.config.Bep20 = peerID
 	bt.config.PeerID = utils.PeerIDRandom(peerID)
@@ -127,12 +128,12 @@ func (bt *BTServer) configure(ctx context.Context) {
 	// 	RequirePreferred: settings.BTsets.ForceEncrypt, //	NE
 	// 	Preferred:        true,                         //	NE
 	// } //	NE
-	if settings.BTsets.DownloadRateLimit > 0 {
-		bt.config.DownloadRateLimiter = utils.Limit(settings.BTsets.DownloadRateLimit * 1024)
-	}
-	if settings.BTsets.UploadRateLimit > 0 {
-		bt.config.UploadRateLimiter = utils.Limit(settings.BTsets.UploadRateLimit * 1024)
-	}
+	// Always install real limiters, even when unlimited: a limiter created with
+	// a real burst stays live-tunable via SetLimit()/SetBurst() later, so the
+	// mobile engine always has a handle to tweak global rate limits without a
+	// reconnect (see BTServer.SetRateLimits).
+	bt.config.DownloadRateLimiter = utils.LimitBurst(settings.BTsets.DownloadRateLimit * 1024)
+	bt.config.UploadRateLimiter = utils.LimitBurst(settings.BTsets.UploadRateLimit * 1024)
 	if settings.TorAddr != "" {
 		log.Println("Set listen addr", settings.TorAddr)
 		bt.config.SetListenAddr(settings.TorAddr)
@@ -161,7 +162,7 @@ func (bt *BTServer) configure(ctx context.Context) {
 			bt.config.PublicIp4 = ip4
 		}
 	}
-	if bt.config.PublicIp4 == nil {
+	if bt.config.PublicIp4 == nil && settings.Args.ProxyURL == "" {
 		bt.config.PublicIp4, err = publicip.Get4(ctx)
 		if err != nil {
 			log.Printf("error getting public ipv4 address: %v", err)
@@ -253,6 +254,43 @@ func (bt *BTServer) configureProxy() error {
 	}
 
 	return nil
+}
+
+// SetRateLimits re-tunes the global download/upload rate limiters on the live
+// client config, in bytes per second (<= 0 means unlimited). This takes effect
+// without a reconnect: anacrolix/torrent reads the shared *rate.Limiter on every
+// transfer. Burst is always set before the limit to survive the rate.Inf -> N
+// transition.
+func (bt *BTServer) SetRateLimits(downBytesPerSec, upBytesPerSec int) {
+	bt.mu.Lock()
+	defer bt.mu.Unlock()
+	if bt.config == nil {
+		return
+	}
+	if bt.config.DownloadRateLimiter == nil {
+		bt.config.DownloadRateLimiter = utils.LimitBurst(downBytesPerSec)
+	} else {
+		utils.ApplyLimit(bt.config.DownloadRateLimiter, downBytesPerSec)
+	}
+	if bt.config.UploadRateLimiter == nil {
+		bt.config.UploadRateLimiter = utils.LimitBurst(upBytesPerSec)
+	} else {
+		utils.ApplyLimit(bt.config.UploadRateLimiter, upBytesPerSec)
+	}
+}
+
+// SetUploadPolicy mutates the global seeding policy on the live client config.
+// Torrent.seeding() reads cl.config.Seed / cl.config.NoUpload on every call and
+// bt.config is that same pointer, so this applies live without dropping any
+// torrent (already-open connections converge over a choke/unchoke cycle).
+func (bt *BTServer) SetUploadPolicy(seed, noUpload bool) {
+	bt.mu.Lock()
+	defer bt.mu.Unlock()
+	if bt.config == nil {
+		return
+	}
+	bt.config.Seed = seed
+	bt.config.NoUpload = noUpload
 }
 
 func (bt *BTServer) GetTorrent(hash torrent.InfoHash) *Torrent {

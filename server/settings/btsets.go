@@ -53,7 +53,8 @@ type BTSets struct {
 	DisableDHT        bool
 	DisablePEX        bool
 	DisableUpload     bool
-	DownloadRateLimit int // in kb, 0 - inf
+	Seed              bool // keep seeding after download completes (global)
+	DownloadRateLimit int  // in kb, 0 - inf
 	UploadRateLimit   int // in kb, 0 - inf
 	ConnectionsLimit  int
 	PeersListenPort   int
@@ -132,6 +133,22 @@ func SetBTSets(sets *BTSets) {
 	}
 
 	BTsets = sets
+	buf, err := json.Marshal(BTsets)
+	if err != nil {
+		log.TLogln("Error marshal btsets", err)
+		return
+	}
+	tdb.Set("Settings", "BitTorr", buf)
+}
+
+// SaveBTSets persists the current BTsets to the database as-is, without the
+// failsafe clamping and disk-scan side effects of SetBTSets. Intended for live
+// tweaks of individual settings (e.g. global rate limits / seeding policy) where
+// the in-memory BTsets pointer is already the source of truth.
+func SaveBTSets() {
+	if ReadOnly || BTsets == nil {
+		return
+	}
 	buf, err := json.Marshal(BTsets)
 	if err != nil {
 		log.TLogln("Error marshal btsets", err)

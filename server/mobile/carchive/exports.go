@@ -5,6 +5,7 @@ package main
 */
 import "C"
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"runtime/debug"
@@ -137,6 +138,50 @@ func TS_AddTorrent(requestJSON *C.char) *C.char {
 	})
 }
 
+//export TS_AddTorrentFile
+func TS_AddTorrentFile(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			DataB64  string `json:"dataB64"`
+			Title    string `json:"title"`
+			Poster   string `json:"poster"`
+			Category string `json:"category"`
+			Save     *bool  `json:"save"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+
+		data, err := base64.StdEncoding.DecodeString(req.DataB64)
+		if err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidArgument, "dataB64 is not valid base64: "+err.Error())
+		}
+
+		save := true
+		if req.Save != nil {
+			save = *req.Save
+		}
+
+		var result interface{}
+		var addErr error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					addErr = core.NewEngineError(core.ErrTorrentAddFailed,
+						fmt.Sprintf("torrent add panic: %v", r))
+				}
+			}()
+			result, addErr = eng.AddTorrentFile(data, req.Title, req.Poster, req.Category, save)
+		}()
+		return result, addErr
+	})
+}
+
 //export TS_TorrentStatus
 func TS_TorrentStatus(hash *C.char) *C.char {
 	return exportJSON(func() (interface{}, error) {
@@ -159,6 +204,27 @@ func TS_ListTorrents() *C.char {
 	})
 }
 
+//export TS_SetTorrent
+func TS_SetTorrent(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			Hash     string `json:"hash"`
+			Title    string `json:"title"`
+			Poster   string `json:"poster"`
+			Category string `json:"category"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		return nil, eng.SetTorrentMeta(req.Hash, req.Title, req.Poster, req.Category)
+	})
+}
+
 //export TS_DropTorrent
 func TS_DropTorrent(hash *C.char) *C.char {
 	return exportJSON(func() (interface{}, error) {
@@ -167,6 +233,40 @@ func TS_DropTorrent(hash *C.char) *C.char {
 			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
 		}
 		return nil, eng.DropTorrent(fromCString(hash))
+	})
+}
+
+//export TS_ExportTorrents
+func TS_ExportTorrents() *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+		s, err := eng.ExportTorrents()
+		if err != nil {
+			return nil, err
+		}
+		return s, nil
+	})
+}
+
+//export TS_ImportTorrents
+func TS_ImportTorrents(backupJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+		added, skipped, failed, err := eng.ImportTorrents(fromCString(backupJSON))
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"added":   added,
+			"skipped": skipped,
+			"failed":  failed,
+		}, nil
 	})
 }
 
@@ -246,6 +346,45 @@ func TS_Settings() *C.char {
 			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
 		}
 		return eng.Settings(), nil
+	})
+}
+
+//export TS_SetRateLimits
+func TS_SetRateLimits(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			DownloadKB int `json:"downloadKB"`
+			UploadKB   int `json:"uploadKB"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		return nil, eng.SetRateLimits(req.DownloadKB, req.UploadKB)
+	})
+}
+
+//export TS_SetUploadPolicy
+func TS_SetUploadPolicy(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			Seed        bool `json:"seed"`
+			AllowUpload bool `json:"allowUpload"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		// allowUpload is the UI-facing sense; the core takes noUpload.
+		return nil, eng.SetUploadPolicy(req.Seed, !req.AllowUpload)
 	})
 }
 
