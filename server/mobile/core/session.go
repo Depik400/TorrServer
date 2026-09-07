@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	stdmime "mime"
 	"net/http"
 	"path/filepath"
@@ -310,6 +311,45 @@ func (s *StreamSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Accept-Ranges", "bytes")
+
+	// download=1: hand the file to the client as a saveable attachment. Range /
+	// 206 handling is left untouched (http.ServeContent below) so the download
+	// stays resumable. The session's own graceTimeout only starts once
+	// ActiveHTTP drops to 0 (see the defer at the top of ServeHTTP), so it
+	// cannot fire mid-download; but a single long io.Copy with no new requests
+	// can still outrun the torrent's disconnect timeout, so refresh the expiry
+	// periodically the same way handleDownloadZip does.
+	if r.URL.Query().Get("download") == "1" {
+		safeName := strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_' {
+				return r
+			}
+			return '_'
+		}, filepath.Base(file.Path()))
+		if safeName == "" {
+			safeName = "download"
+		}
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, safeName))
+
+		stopKeepAlive := make(chan struct{})
+		var keepAliveOnce sync.Once
+		defer keepAliveOnce.Do(func() { close(stopKeepAlive) })
+		go func() {
+			ticker := time.NewTicker(20 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-stopKeepAlive:
+					return
+				case <-ticker.C:
+					s.LastRequest.Store(time.Now().Unix())
+					if t := torr.GetTorrent(s.Hash); t != nil {
+						t.AddExpiredTime(2 * time.Minute)
+					}
+				}
+			}
+		}()
+	}
 
 	http.ServeContent(w, r, file.Path(), time.Unix(st.Timestamp, 0), reader)
 }
