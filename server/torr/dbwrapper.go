@@ -51,6 +51,18 @@ func AddTorrentDB(torr *Torrent) {
 	}
 	t.Timestamp = torr.Timestamp
 
+	// Preserve the persisted per-file priority map: this rebuild is driven from
+	// a *Torrent and does not carry it, so without this a rename (SetTorrent ->
+	// AddTorrentDB) would wipe the user's file selection.
+	if t.TorrentSpec != nil {
+		for _, ex := range settings.ListTorrent() {
+			if ex != nil && ex.TorrentSpec != nil && ex.InfoHash == t.InfoHash && len(ex.FilePriorities) > 0 {
+				t.FilePriorities = ex.FilePriorities
+				break
+			}
+		}
+	}
+
 	if t.TorrentSpec != nil {
 		settings.AddTorrent(t)
 	}

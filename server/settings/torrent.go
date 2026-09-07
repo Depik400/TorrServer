@@ -19,6 +19,14 @@ type TorrentDB struct {
 
 	Timestamp int64 `json:"timestamp,omitempty"`
 	Size      int64 `json:"size,omitempty"`
+
+	// FilePriorities is the persisted per-file download priority map for the
+	// torrent: fileId (1-based, as reported in TorrentStatus) -> priority,
+	// where priority is 0 = skip, 1 = normal, 4 = high. An absent/empty field
+	// means "all normal" and is migration-safe (older DB rows simply lack it).
+	// The mobile engine re-applies this map on warmup so a restart keeps the
+	// user's file selection instead of restarting a full download.
+	FilePriorities map[int]int `json:"file_priorities,omitempty"`
 }
 
 type File struct {

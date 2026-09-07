@@ -490,3 +490,32 @@ func TS_SearchProviders(requestJSON *C.char) *C.char {
 		}, nil
 	})
 }
+
+// TS_SetFilePriorities sets persistent per-file download priorities on a torrent.
+// in:  {"hash", "files":[{"fileId":int,"priority":int}]} - priority 0=skip 1=normal 4=high
+// out: {"applied":int}
+// The map is persisted alongside the torrent's DB record and re-applied on
+// warmup, so a restart keeps the user's file selection instead of restarting a
+// full download. Requires the torrent's metadata (GotInfo).
+//
+//export TS_SetFilePriorities
+func TS_SetFilePriorities(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			Hash  string              `json:"hash"`
+			Files []core.FilePriority `json:"files"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		if err := eng.SetFilePriorities(req.Hash, req.Files); err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"applied": len(req.Files)}, nil
+	})
+}

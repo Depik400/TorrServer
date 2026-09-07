@@ -125,10 +125,21 @@ func (s *StreamSession) pinPieces() {
 	}
 }
 
+// unpinPieces drops the streaming pin. Instead of forcing PiecePriorityNone it
+// restores the file's persisted priority (default 0 = skip / stream-on-demand),
+// so streaming a file the user marked "download" / "high" does not silently
+// knock it back to skip when playback stops.
 func (s *StreamSession) unpinPieces() {
-	if s.torrentFile != nil {
-		s.torrentFile.SetPriority(torrent.PiecePriorityNone)
+	if s.torrentFile == nil {
+		return
 	}
+	priority := 0
+	if m := loadFilePriorities(s.Hash); m != nil {
+		if p, ok := m[s.FileID]; ok {
+			priority = p
+		}
+	}
+	setTorrentFilePriority(s.torrentFile, priority)
 }
 
 func (s *StreamSession) fileBytesCompleted() int64 {

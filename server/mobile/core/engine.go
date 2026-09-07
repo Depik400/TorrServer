@@ -604,12 +604,34 @@ func (e *Engine) TorrentStatus(hash string) (map[string]interface{}, error) {
 
 	st := tr.Status()
 
+	// Persisted per-file priority map (nil == all normal). completedBytes is
+	// read live from the matching *torrent.File.
+	prios := loadFilePriorities(hash)
+	byPath := map[string]*torrent.File{}
+	if fs := tr.Files(); fs != nil {
+		for _, f := range fs {
+			byPath[f.Path()] = f
+		}
+	}
+
 	files := make([]map[string]interface{}, 0, len(st.FileStats))
 	for _, f := range st.FileStats {
+		priority := 1
+		if prios != nil {
+			if p, ok := prios[f.Id]; ok {
+				priority = p
+			}
+		}
+		var completedBytes int64
+		if tf := byPath[f.Path]; tf != nil {
+			completedBytes = fileCompletedBytes(tf)
+		}
 		files = append(files, map[string]interface{}{
-			"id":     f.Id,
-			"path":   f.Path,
-			"length": f.Length,
+			"id":             f.Id,
+			"path":           f.Path,
+			"length":         f.Length,
+			"priority":       priority,
+			"completedBytes": completedBytes,
 		})
 	}
 
@@ -936,8 +958,194 @@ func (e *Engine) WarmupTorrents() {
 
 	list := torr.ListTorrentsDB()
 	for hash := range list {
-		torr.GetTorrent(hash.HexString())
+		hashHex := hash.HexString()
+		torr.GetTorrent(hashHex)
+		if prios := loadFilePriorities(hashHex); len(prios) > 0 {
+			go e.reapplyFilePriorities(hashHex, prios)
+		}
 	}
+}
+
+// FilePriority is one {fileId, priority} pair for SetFilePriorities.
+// priority: 0 = skip (do not download), 1 = normal, 4 = high.
+type FilePriority struct {
+	FileID   int `json:"fileId"`
+	Priority int `json:"priority"`
+}
+
+// setTorrentFilePriority maps our {0,1,4} scale onto anacrolix piece priorities
+// and applies it to a single *torrent.File:
+//
+//	0 -> torrent.PiecePriorityNone   (not wanted; stops requesting this file's pieces)
+//	1 -> torrent.PiecePriorityNormal (wanted, full download)
+//	4 -> torrent.PiecePriorityHigh   (wanted a lot)
+func setTorrentFilePriority(f *torrent.File, priority int) {
+	switch priority {
+	case 0:
+		f.SetPriority(torrent.PiecePriorityNone)
+	case 4:
+		f.SetPriority(torrent.PiecePriorityHigh)
+	default:
+		f.SetPriority(torrent.PiecePriorityNormal)
+	}
+}
+
+// fileCompletedBytes reports how many bytes of a file are already on disk, by
+// summing the file-local byte counts of its completed pieces.
+func fileCompletedBytes(f *torrent.File) int64 {
+	var done int64
+	for _, ps := range f.State() {
+		if ps.Complete {
+			done += ps.Bytes
+		}
+	}
+	return done
+}
+
+// loadFilePriorities returns the persisted {fileId: priority} map for a torrent,
+// or nil when none was ever saved (== all normal, migration-safe).
+func loadFilePriorities(hash string) map[int]int {
+	for _, db := range sets.ListTorrent() {
+		if db != nil && db.TorrentSpec != nil &&
+			strings.EqualFold(db.InfoHash.HexString(), hash) {
+			return db.FilePriorities
+		}
+	}
+	return nil
+}
+
+// saveFilePriorities merges updates into the torrent's persisted priority map
+// (settings.TorrentDB.FilePriorities) and rewrites the DB row. A no-op when the
+// torrent is not persisted.
+func saveFilePriorities(hash string, updates map[int]int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.TLogln("saveFilePriorities panic for", hash, ":", r)
+		}
+	}()
+	for _, db := range sets.ListTorrent() {
+		if db == nil || db.TorrentSpec == nil ||
+			!strings.EqualFold(db.InfoHash.HexString(), hash) {
+			continue
+		}
+		if db.FilePriorities == nil {
+			db.FilePriorities = make(map[int]int)
+		}
+		for id, p := range updates {
+			db.FilePriorities[id] = p
+		}
+		sets.AddTorrent(db)
+		return
+	}
+}
+
+// applyFilePriorities resolves fileId -> *torrent.File the same way PrepareStream
+// does (the status file list gives the path; match it against tr.Files()) and
+// pushes each priority down to the torrent. Requires GotInfo.
+func applyFilePriorities(tr *torr.Torrent, prios map[int]int) error {
+	st := tr.Status()
+	pathByID := make(map[int]string, len(st.FileStats))
+	for _, fs := range st.FileStats {
+		pathByID[fs.Id] = fs.Path
+	}
+
+	files := tr.Files()
+	if files == nil {
+		return newEngineError(ErrTorrentMetadataPending, "torrent files not available")
+	}
+	byPath := make(map[string]*torrent.File, len(files))
+	for _, f := range files {
+		byPath[f.Path()] = f
+	}
+
+	for id, prio := range prios {
+		path, ok := pathByID[id]
+		if !ok {
+			return newEngineError(ErrFileNotFound,
+				fmt.Sprintf("file id %d not found in torrent", id))
+		}
+		f := byPath[path]
+		if f == nil {
+			return newEngineError(ErrFileNotFound,
+				fmt.Sprintf("file id %d (%s) not found in torrent files", id, path))
+		}
+		setTorrentFilePriority(f, prio)
+	}
+	return nil
+}
+
+// SetFilePriorities sets persistent per-file download priorities on a torrent
+// and persists the map alongside the torrent's DB record. priority must be one
+// of 0 (skip), 1 (normal) or 4 (high). Requires the torrent's metadata.
+func (e *Engine) SetFilePriorities(hash string, items []FilePriority) error {
+	e.mu.Lock()
+	running := e.state == EngineRunning
+	e.mu.Unlock()
+	if !running {
+		return newEngineError(ErrEngineNotRunning, "engine is not running")
+	}
+
+	if len(items) == 0 {
+		return newEngineError(ErrInvalidArgument, "no file priorities supplied")
+	}
+
+	updates := make(map[int]int, len(items))
+	for _, it := range items {
+		switch it.Priority {
+		case 0, 1, 4:
+		default:
+			return newEngineError(ErrInvalidArgument,
+				fmt.Sprintf("priority for file %d must be 0, 1 or 4", it.FileID))
+		}
+		updates[it.FileID] = it.Priority
+	}
+
+	tr := torr.GetTorrent(hash)
+	if tr == nil {
+		return newEngineError(ErrTorrentNotFound, "torrent not found: "+hash)
+	}
+	if !tr.GotInfo() {
+		return newEngineError(ErrTorrentMetadataPending, "torrent metadata not yet available")
+	}
+
+	if err := applyFilePriorities(tr, updates); err != nil {
+		return err
+	}
+
+	saveFilePriorities(hash, updates)
+	return nil
+}
+
+// reapplyFilePriorities waits for a warmed-up torrent to publish its metadata,
+// then restores the persisted per-file priority map so a restart does not kick
+// off a full download of files the user marked skip (and keeps normal/high
+// choices in force).
+func (e *Engine) reapplyFilePriorities(hashHex string, prios map[int]int) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.TLogln("reapplyFilePriorities panic for", hashHex, ":", r)
+		}
+	}()
+	deadline := time.Now().Add(2 * time.Minute)
+	for time.Now().Before(deadline) {
+		e.mu.Lock()
+		running := e.state == EngineRunning
+		e.mu.Unlock()
+		if !running {
+			return
+		}
+		tr := torr.GetTorrent(hashHex)
+		if tr != nil && tr.Torrent != nil && tr.Torrent.Info() != nil {
+			if err := applyFilePriorities(tr, prios); err != nil {
+				log.TLogln("reapplyFilePriorities:", hashHex, err)
+			} else {
+				log.TLogln("reapplyFilePriorities: restored", len(prios), "file priorities for", hashHex)
+			}
+			return
+		}
+		time.Sleep(3 * time.Second)
+	}
+	log.TLogln("reapplyFilePriorities: gave up waiting for metadata of", hashHex)
 }
 
 func (e *Engine) PrepareStream(hash string, fileID int) (map[string]interface{}, error) {
