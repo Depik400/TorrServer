@@ -1,73 +1,102 @@
-# TorrServer (Go engine)
+# AGENTS.md — TorrServerLibrary (Go-ядро)
 
-Mobile-friendly fork of TorrServer — local torrent engine for iOS.
+Mobile-friendly форк TorrServer. Даёт локальный torrent-движок для iOS,
+скомпилированный в `TorrCore.xcframework` (C-archive).
 
-## Folder Layout
+- **Ветка для всей iOS-работы:** `feat/native-ios-app`. Не переключаться, не мержить.
+- **Git:** коммитить здесь, **не пушить**, если пользователь не попросил явно.
+- Трейлер коммита: `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`.
+
+## Раскладка репозиториев (клонированы рядом)
 
 ```
-TorrServerIos/
-  TorrServerLibrary/        ← THIS REPO — Go engine (branch feat/native-ios-app)
-  TorrServerCoreBridge/     ← Swift SPM package, wraps xcframework
-  TorrServerClient/         ← iOS app, depends on CoreBridge via SPM
+torrServerIos/
+  TorrServerLibrary/      ← ЭТОТ РЕПО — Go-движок (feat/native-ios-app)
+  TorrServerCoreBridge/   — Swift-пакет ITorrentStreamCoreBridge, коммитит xcframework
+  TorrServerClient/       — iOS-приложение (ITorrentStream.xcodeproj)
+  TorrServerVLCKit/       — локальный SPM-пакет с MobileVLCKit (двоичный)
 ```
 
-## How it works together
+Поток: `iOS App → TorrCoreClient (Swift actor) → C-экспорты → Go-движок`.
 
-1. **TorrServerLibrary** — Go source. Compiled to `TorrCore.xcframework` (C archive).
-2. **TorrServerCoreBridge** — Swift Package. Commits the xcframework. Wraps C functions in a Swift `actor TorrCoreClient`.
-3. **TorrServerClient** — iOS app. Depends on CoreBridge via SPM (`Package.swift`).
-   Also uses `.xcodeproj` for Signing & Capabilities. Widget extension for Live Activity.
-
-Flow: `iOS App → TorrCoreClient (Swift actor) → C-exported functions → Go engine`
-
-## Build
-
-```bash
-# Build iOS XCFramework (arm64 + simulator arm64)
-cd server && bash scripts/build-ios-carchive.sh
-# Output: build/ios/TorrCore.xcframework
-```
-
-## Architecture
+## Где что лежит
 
 ```
 server/
-  main.go          — Original CLI/HTTP entry point (kept for desktop builds)
   mobile/
     core/
-      engine.go    — Engine lifecycle (start/stop/torrents/streams/warmup/downloadzip)
-      link.go      — Parse magnet/infohash links
-      config.go    — Engine config parsing and validation
+      engine.go     — жизненный цикл движка: старт/стоп, торренты, стримы,
+                      WarmupTorrents, handleDownloadZip, applyMobileSettings,
+                      TorrentStatus, PrepareStream, SetFilePriorities,
+                      SetTorrentMeta, rate limits / seed policy
+      session.go    — StreamSession.ServeHTTP: раздача файла (http.ServeContent,
+                      Range/206), Content-Type (в т.ч. субтитры vtt/srt/ass),
+                      ?download=1 → Content-Disposition, pinPieces/unpinPieces,
+                      graceTimeout = 60s
+      search.go     — Engine.Search / TestIndexer / SearchProviders:
+                      агрегатор torznab + rutor, прокси-транспорт, дедуп, дедлайн
+      config.go     — разбор/валидация CoreConfig
+      link.go       — разбор magnet/infohash
     carchive/
-      exports.go   — C-exported API (TS_Start, TS_Stop, TS_AddTorrent, …)
-      strings.go   — C string helpers (toCString, fromCString, TS_Free)
-  torr/
-    torrent.go     — Torrent wrapper (NewTorrent, Status, watch, …)
-    apihelper.go   — SaveTorrentToDB, AddTorrent, GetTorrent, ListTorrent
-    dbwrapper.go   — AddTorrentDB, GetTorrentDB, ListTorrentsDB
-  settings/
-    settings.go    — Global init, DB routing
-    torrent.go     — Torrent DB CRUD (AddTorrent, ListTorrent, RemTorrent)
-    db.go          — Bbolt database (Open, Get, Set, Close)
-    dbreadcache.go — Read-cache wrapper
+      exports.go    — все C-экспорты `//export TS_*`
+      strings.go    — toCString / fromCString / TS_Free
+  torr/             — обёртка торрента: torrent.go, apihelper.go, dbwrapper.go
+  settings/         — bbolt DB: settings.go, torrent.go (TorrentDB), db.go
+  rutor/ torznab/ tgbot/  — индексаторы (намеренно сохранены в iOS-сборке)
+  web/ api/ ...     — десктопные части, в мобильную сборку не входят
 ```
 
-## C ABI Contract
+## Сборка и проверки
 
-All exported functions are in `mobile/carchive/exports.go`:
-- Return `*C.char` (JSON) — caller must free via `TS_Free(ptr)`
-- Input takes `*C.char` (JSON request)
-- JSON envelope: `{"ok":true,"data":{…}}` or `{"ok":false,"error":{"code":"…","message":"…"}}`
+```bash
+cd server
+go build ./...                                            # обязательный sanity
+GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build ./mobile/... # iOS-замыкание
+go vet ./mobile/... ./torr/... ./settings/...
+```
 
-## Concurrency Notes
+После правок Go xcframework пересобирается **из соседнего bridge-репозитория**:
 
-- `anacrolix/torrent` spawns background goroutines (DHT, trackers, watch)
-- All `recover()` calls must be in the same goroutine as potential panic
-- `bolt.DB` uses file locking — concurrent writes serialize
-- `tsFiles.TorrServer.Files` is nil for torrents without metadata (fresh magnet links)
+```bash
+bash ../TorrServerCoreBridge/Scripts/build-xcframework-local.sh   # ~20 c
+```
 
-## Key Dependencies
+Скрипт `Scripts/build-xcframework-local.sh` собирает из ЛОКАЛЬНОГО чекаута.
+Старый `build-xcframework.sh` клонирует GitHub — **для локальной итерации не
+использовать**.
 
-- `github.com/anacrolix/torrent` — BitTorrent protocol
-- `go.etcd.io/bbolt` — Embedded DB (torrents, settings, viewed)
-- `github.com/anacrolix/dht/v2` — DHT networking
+## Известные предсуществующие проблемы (НЕ чинить, не считать регрессом)
+
+- `TestParseConfigInvalidHost` в `mobile/core` падает на чистом дереве.
+- `gofmt -d` показывает дрейф в `engine.go` (map-литерал `ChunkMap`) и `session.go`
+  (порядок импортов + выравнивание структур). Свои хунки держать gofmt-чистыми,
+  чужой дрейф не трогать.
+- Вендорный форк торрента — `github.com/tsynik/torrent v1.2.22` (replace для
+  `anacrolix/torrent`). У `*torrent.File` **нет** `BytesCompleted()` — считать по
+  `f.State()` (сумма завершённых кусков), как в `session.fileBytesCompleted`.
+
+## C ABI
+
+Все `TS_*` в `mobile/carchive/exports.go`:
+- вход `*C.char` (JSON), выход `*C.char` (JSON), caller обязан `TS_Free(ptr)`;
+- конверт: `{"ok":true,"data":{…}}` либо
+  `{"ok":false,"error":{"code":"…","message":"…"}}`;
+- новый экспорт = функция `//export TS_Xxx` + `exportJSON`-обёртка + envelope,
+  по образцу `TS_Search` / `TS_SetFilePriorities`.
+
+## Конкурентность
+
+- `anacrolix/torrent` поднимает фоновые горутины (DHT, трекеры, watch);
+  `recover()` — в той же горутине, где возможна паника.
+- `bolt.DB` — файловая блокировка, конкурентные записи сериализуются.
+- Список файлов у свежего magnet ещё `nil` до `GotInfo()` — приоритеты и прочее
+  применять отложенно.
+
+## Рабочий процесс агента
+
+- Одна задача роадмапа (`plans/product-roadmap/`) = один субагент = один коммит
+  в каждом затронутом репозитории.
+- Прокси: сетевые запросы движка (в т.ч. поиск) должны уважать
+  `CoreConfig.proxyURL` (SOCKS), иначе утечка реального IP на трекеры.
+- Персист новых настроек торрента — в `settings.TorrentDB` (JSON целиком),
+  миграция не ломающая: отсутствие поля = дефолт.
