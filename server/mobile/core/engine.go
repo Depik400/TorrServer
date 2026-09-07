@@ -22,6 +22,7 @@ import (
 	"github.com/anacrolix/torrent/metainfo"
 
 	"server/log"
+	"server/rutor"
 	sets "server/settings"
 	"server/torr"
 	"server/version"
@@ -45,6 +46,10 @@ type Engine struct {
 
 	sessions   map[string]*StreamSession
 	sessionSeq int64
+
+	// rutorStarted guards the one-shot rutor DB download/index kicked off the
+	// first time a search runs with rutor enabled (see search.go).
+	rutorStarted bool
 }
 
 var (
@@ -238,6 +243,11 @@ func (e *Engine) Stop() error {
 		e.bt = nil
 	}
 
+	if e.rutorStarted {
+		rutor.Stop()
+		e.rutorStarted = false
+	}
+
 	torr.ShutdownGraceful()
 
 	if e.cancel != nil {
@@ -267,8 +277,14 @@ func (e *Engine) applyMobileSettings(cfg *Config) error {
 	}
 
 	sets.BTsets.EnableDLNA = false
-	sets.BTsets.EnableRutorSearch = false
-	sets.BTsets.EnableTorznabSearch = false
+	// Indexer search is driven per-request from the client (see search.go):
+	// TS_Search passes the torznab indexer list and the rutor flag on every
+	// call, so we no longer hard-disable the search subsystem here. Torznab
+	// needs no global toggle; rutor is enabled lazily by Engine.ensureRutorStarted.
+	sets.BTsets.EnableTorznabSearch = true
+	if !e.rutorStarted {
+		sets.BTsets.EnableRutorSearch = false
+	}
 	sets.BTsets.DisableUPNP = true
 	sets.BTsets.UseDisk = cfg.DiskCacheEnabled
 	sets.BTsets.RemoveCacheOnDrop = false

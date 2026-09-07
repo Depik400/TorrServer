@@ -398,3 +398,95 @@ func TS_UpdateSettings(requestJSON *C.char) *C.char {
 		return nil, eng.UpdateSettings(fromCString(requestJSON))
 	})
 }
+
+// TS_Search runs an aggregated indexer search.
+// in:  {"query", "category"(all|video|movies|tv|anime|music|other),
+// "indexers":[{"name","torznabURL","apiKey","categories":[]}], "rutorEnabled"}
+// out: {"results":[SearchResult], "providerErrors":[{"provider","message"}]}
+//
+//export TS_Search
+func TS_Search(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			Query        string               `json:"query"`
+			Category     string               `json:"category"`
+			Indexers     []core.IndexerConfig `json:"indexers"`
+			RutorEnabled bool                 `json:"rutorEnabled"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+
+		results, provErrs, err := eng.Search(req.Query, core.SearchOpts{
+			Category:     req.Category,
+			Indexers:     req.Indexers,
+			RutorEnabled: req.RutorEnabled,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if results == nil {
+			results = []core.SearchResult{}
+		}
+		if provErrs == nil {
+			provErrs = []core.ProviderError{}
+		}
+		return map[string]interface{}{
+			"results":        results,
+			"providerErrors": provErrs,
+		}, nil
+	})
+}
+
+// TS_TestIndexer probes a torznab endpoint (t=caps).
+// in:  {"url", "apiKey"}
+// out: {"ok":bool, "message":"...", "categories":["Movies","TV",...]}
+//
+//export TS_TestIndexer
+func TS_TestIndexer(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			URL    string `json:"url"`
+			APIKey string `json:"apiKey"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		return eng.TestIndexer(req.URL, req.APIKey), nil
+	})
+}
+
+// TS_SearchProviders reports readiness for the providers the client would use.
+// in:  {"indexers":[{"name","torznabURL","apiKey"}], "rutorEnabled"}
+// out: {"providers":[{"name","kind"(torznab|rutor),"ready":bool,"message"}]}
+//
+//export TS_SearchProviders
+func TS_SearchProviders(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var req struct {
+			Indexers     []core.IndexerConfig `json:"indexers"`
+			RutorEnabled bool                 `json:"rutorEnabled"`
+		}
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &req); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		return map[string]interface{}{
+			"providers": eng.SearchProviders(req.Indexers, req.RutorEnabled),
+		}, nil
+	})
+}
