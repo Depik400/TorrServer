@@ -6,6 +6,7 @@ import (
 	stdmime "mime"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -283,13 +284,28 @@ func (s *StreamSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	mime, err := mt.MimeTypeByPath(file.Path())
-	if err == nil && mime.IsMedia() {
-		w.Header().Set("Content-Type", mime.String())
-	} else {
-		ext := filepath.Ext(file.Path())
-		if ct := stdmime.TypeByExtension(ext); ct != "" {
-			w.Header().Set("Content-Type", ct)
+	// Subtitle sidecar files never satisfy mimetype.IsMedia() (which only
+	// covers audio/video containers) and stdmime often maps them to the wrong
+	// type (e.g. ".srt" → application/x-subrip, ".vtt" missing entirely), which
+	// makes AVPlayer / external players refuse to sideload them. Set the type
+	// explicitly for the text-based subtitle formats; video handling below is
+	// untouched.
+	switch strings.ToLower(filepath.Ext(file.Path())) {
+	case ".vtt":
+		w.Header().Set("Content-Type", "text/vtt")
+	case ".srt":
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	case ".ass", ".ssa":
+		w.Header().Set("Content-Type", "text/plain")
+	default:
+		mime, err := mt.MimeTypeByPath(file.Path())
+		if err == nil && mime.IsMedia() {
+			w.Header().Set("Content-Type", mime.String())
+		} else {
+			ext := filepath.Ext(file.Path())
+			if ct := stdmime.TypeByExtension(ext); ct != "" {
+				w.Header().Set("Content-Type", ct)
+			}
 		}
 	}
 
