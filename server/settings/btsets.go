@@ -59,6 +59,13 @@ type BTSets struct {
 	ConnectionsLimit  int
 	PeersListenPort   int
 
+	// Seeding limits (t3-02): 0 == no limit, matching the rate-limit convention.
+	// Absence on an older persisted config is a migration-safe no-op (zero
+	// values), so no explicit migration step is needed.
+	SeedRatioLimit    float64 // stop/remove once ratio >= this, 0 = no limit
+	SeedMinutesLimit  int     // stop/remove once seeding minutes >= this, 0 = no limit
+	SeedActionOnLimit int     // 1 = remove-torrent, 2 = remove-torrent+data (0/pause reserved, not implemented)
+
 	// HTTPS
 	SslPort int
 	SslCert string

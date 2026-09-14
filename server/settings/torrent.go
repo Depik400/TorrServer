@@ -27,6 +27,18 @@ type TorrentDB struct {
 	// The mobile engine re-applies this map on warmup so a restart keeps the
 	// user's file selection instead of restarting a full download.
 	FilePriorities map[int]int `json:"file_priorities,omitempty"`
+
+	// UploadedBytesBase is the accumulated uploaded-bytes counter carried
+	// across engine restarts/reconnects (anacrolix's own Stats() resets when
+	// a torrent reconnects). Live session bytes are added on top of this by
+	// the caller; this field is periodically refreshed by the seeding-limits
+	// loop via UpdateUploadStats. Absent on older DB rows == 0 (migration-safe).
+	UploadedBytesBase int64 `json:"uploaded_bytes_base,omitempty"`
+
+	// DownloadCompletedAt is the unix-seconds timestamp the download first
+	// reached 100%; 0 == not completed yet. Used to compute seeding duration
+	// from completion rather than from when the torrent was added.
+	DownloadCompletedAt int64 `json:"download_completed_at,omitempty"`
 }
 
 type File struct {
@@ -91,4 +103,28 @@ func RemTorrent(hash metainfo.Hash) {
 	mu.Lock()
 	tdb.Rem("Torrents", hash.HexString())
 	mu.Unlock()
+}
+
+// UpdateUploadStats refreshes only the persisted upload-accounting fields
+// for a torrent (uploaded-bytes accumulator + download-completion time)
+// without rewriting its other fields. Called periodically by the
+// seeding-limits loop so the ratio/seeding-time survive an engine restart.
+// A no-op if the torrent has no persisted row yet.
+func UpdateUploadStats(hash metainfo.Hash, uploadedBytesBase int64, downloadCompletedAt int64) {
+	mu.Lock()
+	defer mu.Unlock()
+	buf := tdb.Get("Torrents", hash.HexString())
+	if len(buf) == 0 {
+		return
+	}
+	var t *TorrentDB
+	if err := json.Unmarshal(buf, &t); err != nil || t == nil {
+		return
+	}
+	t.UploadedBytesBase = uploadedBytesBase
+	t.DownloadCompletedAt = downloadCompletedAt
+	nb, err := json.Marshal(t)
+	if err == nil {
+		tdb.Set("Torrents", hash.HexString(), nb)
+	}
 }

@@ -44,6 +44,16 @@ type Torrent struct {
 	BytesReadUsefulData int64
 	BytesWrittenData    int64
 
+	// UploadedBytesBase is the persisted uploaded-bytes carried over from a
+	// previous session (see settings.TorrentDB.UploadedBytesBase); the live
+	// anacrolix session total is added on top in Status(). DownloadCompletedAt
+	// is the unix-seconds timestamp the download first reached 100%, 0 while
+	// not yet complete. Both are seeded from the DB row when the torrent is
+	// reconnected (see apihelper.GetTorrent) and refreshed periodically by
+	// the seeding-limits loop via settings.UpdateUploadStats.
+	UploadedBytesBase   int64
+	DownloadCompletedAt int64
+
 	PreloadSize    int64
 	PreloadedBytes int64
 
@@ -206,6 +216,12 @@ func (t *Torrent) progressEvent() {
 		t.BytesReadUsefulData = st.BytesRead.Int64()
 		t.BytesWrittenData = st.BytesWritten.Int64()
 
+		if t.DownloadCompletedAt == 0 {
+			if length := t.Torrent.Length(); length > 0 && t.Torrent.BytesCompleted() >= length {
+				t.DownloadCompletedAt = time.Now().Unix()
+			}
+		}
+
 		if t.cache != nil {
 			t.PreloadedBytes = t.cache.GetState().Filled
 		}
@@ -328,6 +344,14 @@ func (t *Torrent) Status() *state.TorrentStatus {
 	st.BitRate = t.BitRate
 	st.DurationSeconds = t.DurationSeconds
 
+	if t.DownloadCompletedAt > 0 {
+		seedingSeconds := time.Now().Unix() - t.DownloadCompletedAt
+		if seedingSeconds < 0 {
+			seedingSeconds = 0
+		}
+		st.SeedingSeconds = seedingSeconds
+	}
+
 	if t.TorrentSpec != nil {
 		st.Hash = t.TorrentSpec.InfoHash.HexString()
 	}
@@ -358,6 +382,8 @@ func (t *Torrent) Status() *state.TorrentStatus {
 		st.ActivePeers = tst.ActivePeers
 		st.ConnectedSeeders = tst.ConnectedSeeders
 		st.HalfOpenPeers = tst.HalfOpenPeers
+
+		st.BytesUploaded = t.UploadedBytesBase + tst.BytesWrittenData.Int64()
 
 		if t.Torrent.Info() != nil {
 			st.TorrentSize = t.Torrent.Length()
@@ -392,9 +418,35 @@ func (t *Torrent) Status() *state.TorrentStatus {
 				st.TorrsHash = token
 			}
 		}
+	} else {
+		// No live anacrolix torrent (e.g. DB-only placeholder): fall back to
+		// the persisted accumulator alone, no live session bytes to add.
+		st.BytesUploaded = t.UploadedBytesBase
+	}
+
+	completedBytes := st.LoadedSize
+	if completedBytes <= 0 {
+		completedBytes = st.TorrentSize
+	}
+	if completedBytes > 0 && st.BytesUploaded > 0 {
+		st.Ratio = float64(st.BytesUploaded) / float64(completedBytes)
 	}
 
 	return st
+}
+
+// SnapshotUploadTotals returns the current cumulative uploaded-bytes total
+// (persisted base + live session) and the download-completion timestamp, for
+// periodic persistence by the seeding-limits loop (settings.UpdateUploadStats).
+func (t *Torrent) SnapshotUploadTotals() (uploadedBytesTotal int64, downloadCompletedAt int64) {
+	t.muTorrent.Lock()
+	defer t.muTorrent.Unlock()
+	total := t.UploadedBytesBase
+	if t.Torrent != nil {
+		tst := t.Torrent.Stats()
+		total = t.UploadedBytesBase + tst.BytesWrittenData.Int64()
+	}
+	return total, t.DownloadCompletedAt
 }
 
 func (t *Torrent) CacheState() *cacheSt.CacheState {

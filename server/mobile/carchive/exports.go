@@ -519,3 +519,59 @@ func TS_SetFilePriorities(requestJSON *C.char) *C.char {
 		return map[string]interface{}{"applied": len(req.Files)}, nil
 	})
 }
+
+// TS_SetSeedRules persists the seeding-limit rules (ratio / seeding-time /
+// action) applied to finished downloads by the seeding-limits background
+// loop. 0 values mean "no limit", matching SetRateLimits' convention.
+// in:  {"ratioLimit":float64, "seedingMinutesLimit":int, "actionOnLimit":int}
+//      actionOnLimit: 1=remove-torrent, 2=remove-torrent+data
+//      (0/pause is reserved for a future release and is normalized to 1)
+// out: {}
+//
+//export TS_SetSeedRules
+func TS_SetSeedRules(requestJSON *C.char) *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+
+		var rules core.SeedRules
+		if err := json.Unmarshal([]byte(fromCString(requestJSON)), &rules); err != nil {
+			return nil, core.NewEngineError(core.ErrInvalidJSON, err.Error())
+		}
+		return nil, eng.SetSeedRules(rules)
+	})
+}
+
+// TS_GetSeedRules returns the currently persisted seeding-limit rules.
+// out: {"ratioLimit":float64, "seedingMinutesLimit":int, "actionOnLimit":int}
+//
+//export TS_GetSeedRules
+func TS_GetSeedRules() *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+		return eng.GetSeedRules(), nil
+	})
+}
+
+// TS_ConsumeAutoRemovals returns and clears the pending seeding-limit
+// auto-removal events (torrents removed automatically because they hit a
+// ratio/seeding-time limit). Each event is delivered exactly once; the app
+// is expected to poll this periodically to fire a local notification and
+// keep a small log of recent auto-removals.
+// out: {"events":[{"hash","title","deletedData","timestamp"}]}
+//
+//export TS_ConsumeAutoRemovals
+func TS_ConsumeAutoRemovals() *C.char {
+	return exportJSON(func() (interface{}, error) {
+		eng := core.GetEngine()
+		if eng == nil {
+			return nil, core.NewEngineError(core.ErrEngineNotRunning, "engine is not running")
+		}
+		return map[string]interface{}{"events": eng.ConsumeAutoRemovals()}, nil
+	})
+}

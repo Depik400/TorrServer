@@ -50,6 +50,7 @@ func AddTorrentDB(torr *Torrent) {
 		t.Size = torr.Torrent.Length()
 	}
 	t.Timestamp = torr.Timestamp
+	t.UploadedBytesBase, t.DownloadCompletedAt = torr.SnapshotUploadTotals()
 
 	// Preserve the persisted per-file priority map: this rebuild is driven from
 	// a *Torrent and does not carry it, so without this a rename (SetTorrent ->
@@ -81,6 +82,8 @@ func GetTorrentDB(hash metainfo.Hash) *Torrent {
 			torr.Size = db.Size
 			torr.Data = db.Data
 			torr.Stat = state.TorrentInDB
+			torr.UploadedBytesBase = db.UploadedBytesBase
+			torr.DownloadCompletedAt = db.DownloadCompletedAt
 			return torr
 		}
 	}
@@ -104,6 +107,8 @@ func ListTorrentsDB() map[metainfo.Hash]*Torrent {
 		torr.Size = db.Size
 		torr.Data = db.Data
 		torr.Stat = state.TorrentInDB
+		torr.UploadedBytesBase = db.UploadedBytesBase
+		torr.DownloadCompletedAt = db.DownloadCompletedAt
 		ret[torr.TorrentSpec.InfoHash] = torr
 	}
 	return ret

@@ -66,6 +66,14 @@ type TorrentStatus struct {
 	DurationSeconds     float64     `json:"duration_seconds,omitempty"`
 	BitRate             string      `json:"bit_rate,omitempty"`
 
+	// Seeding accounting (t3-02): BytesUploaded is the accumulated uploaded
+	// payload bytes (persisted base + current session), Ratio is
+	// BytesUploaded / max(loaded, torrent size), SeedingSeconds is time since
+	// the download first reached 100% (0 while not yet complete).
+	BytesUploaded  int64   `json:"bytes_uploaded,omitempty"`
+	Ratio          float64 `json:"ratio,omitempty"`
+	SeedingSeconds int64   `json:"seeding_seconds,omitempty"`
+
 	FileStats []*TorrentFileStat `json:"file_stats,omitempty"`
 }
 

@@ -118,6 +118,8 @@ func GetTorrent(hashHex string) *Torrent {
 				tr.Size = tor.Size
 				tr.Timestamp = tor.Timestamp
 				tr.Category = tor.Category
+				tr.UploadedBytesBase = tor.UploadedBytesBase
+				tr.DownloadCompletedAt = tor.DownloadCompletedAt
 				tr.GotInfo()
 			}
 		}()
@@ -167,13 +169,25 @@ func SetTorrent(hashHex, title, poster, category string, data string) *Torrent {
 }
 
 func RemTorrent(hashHex string) {
+	removeTorrentInternal(hashHex, true)
+}
+
+// RemTorrentKeepData removes a torrent from the live session and the
+// persisted DB but leaves any on-disk cache untouched. Used by the seeding
+// auto-remove action "remove" (as opposed to "remove+data", which is
+// RemTorrent's existing always-delete behaviour).
+func RemTorrentKeepData(hashHex string) {
+	removeTorrentInternal(hashHex, false)
+}
+
+func removeTorrentInternal(hashHex string, deleteData bool) {
 	if sets.ReadOnly {
 		log.TLogln("API RemTorrent: Read-only DB mode!", hashHex)
 		return
 	}
 	hash := metainfo.NewHashFromHex(hashHex)
 	if bts.RemoveTorrent(hash) {
-		if sets.BTsets.UseDisk && hashHex != "" && hashHex != "/" {
+		if deleteData && sets.BTsets.UseDisk && hashHex != "" && hashHex != "/" {
 			name := filepath.Join(sets.BTsets.TorrentsSavePath, hashHex)
 			ff, _ := os.ReadDir(name)
 			for _, f := range ff {

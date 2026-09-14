@@ -50,6 +50,12 @@ type Engine struct {
 	// rutorStarted guards the one-shot rutor DB download/index kicked off the
 	// first time a search runs with rutor enabled (see search.go).
 	rutorStarted bool
+
+	// autoRemovalsMu guards autoRemovals, a small ring buffer of recent
+	// seeding-limit auto-removals (see seedrules.go) consumed by the app via
+	// TS_ConsumeAutoRemovals to fire a local notification / keep a log.
+	autoRemovalsMu sync.Mutex
+	autoRemovals   []AutoRemovalEvent
 }
 
 var (
@@ -193,6 +199,8 @@ func (e *Engine) Start(configJSON string) error {
 			log.TLogln("HTTP server error:", err)
 		}
 	}()
+
+	go e.runSeedRulesLoop(e.ctx.Done())
 
 	return nil
 }
@@ -646,6 +654,9 @@ func (e *Engine) TorrentStatus(hash string) (map[string]interface{}, error) {
 		"uploadSpeed":   st.UploadSpeed,
 		"activePeers":   st.ActivePeers,
 		"totalPeers":    st.TotalPeers,
+		"bytesUploaded": st.BytesUploaded,
+		"ratio":         st.Ratio,
+		"seedingSeconds": st.SeedingSeconds,
 		"files":         files,
 	}, nil
 }
@@ -672,6 +683,9 @@ func (e *Engine) ListTorrents() (interface{}, error) {
 			"uploadSpeed":   st.UploadSpeed,
 			"poster":        st.Poster,
 			"added":         st.Timestamp,
+			"bytesUploaded": st.BytesUploaded,
+			"ratio":         st.Ratio,
+			"seedingSeconds": st.SeedingSeconds,
 		})
 	}
 	return result, nil
